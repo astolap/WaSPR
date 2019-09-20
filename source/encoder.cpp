@@ -1045,24 +1045,77 @@ void encoder::generate_texture() {
 
         /* encode HM, YUV444 -> .hevc (any YUV format) */
 
-        int32_t QP = 20;
+        for (int32_t QP = 0; QP < 51; QP += 51) {
 
-        int32_t hme = encodeHM(
-            SAI0->encoder_raw_output_444,
+            long bytes_hevc = encodeHM(
+                SAI0->encoder_raw_output_444,
+                SAI0->hevc_texture,
+                YUV420,
+                QP,
+                YUV_444_SEQ.size(),
+                nc1,
+                nr1,
+                SAI0->decoder_raw_output_YUV); /*transpose for nr,nc*/
+
+            double bpphevc = 
+                double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
+
+            printf("\nQP=%d\tbpp=\t%f", QP,bpphevc);
+
+        }
+
+        /* decode HM, .hevc (any YUV format) -> (any YUV format)  */
+
+        /* ------------------------------
+        TEXTURE RESIDUAL DECODING STARTS
+        ------------------------------*/
+
+        int32_t status = decodeHM(
             SAI0->hevc_texture,
-            YUV420,
-            QP,
-            YUV_444_SEQ.size(),
-            nc1,
-            nr1,
-            SAI0->decoder_raw_output_444); /*transpose for nr,nc*/
+            SAI0->decoder_raw_output_YUV);
 
-        /* decode HM, .hevc (any YUV format) -> YUV444 */
+        /*convert (any YUV format) -> YUV444 */
+
+        std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
+            SAI0->decoder_raw_output_YUV,
+            YUV420,
+            nr1,
+            nc1,
+            hevc_i_order.size());
 
         /* write PPM back to correct places, YUV444 -> .ppm */
 
-        /* now decode residual images for all views at level=hlevel,
-        and write the result to disk*/
+        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+
+            view *SAI = LF + hevc_i_order.at(ii) - 1;
+
+            if (SAI->residual_rate_color > 0) {
+
+                uint16_t *cropped = cropImage_for_HM(
+                    YUV444_dec.at(ii).data(),
+                    nr1,
+                    nc1,
+                    SAI->ncomp,
+                    HORP,
+                    VERP);
+
+                aux_write16PGMPPM(
+                    SAI->path_raw_texture_residual_at_decoder_ppm,
+                    SAI->nc,
+                    SAI->nr,
+                    SAI->ncomp,
+                    cropped);
+
+                delete[](cropped);
+
+            }
+
+        }
+
+        /* ------------------------------
+        TEXTURE RESIDUAL DECODING ENDS
+        ------------------------------*/
+
         for (int32_t ii = 0; ii < view_indices.size(); ii++) {
 
             view *SAI = LF + view_indices.at(ii);
@@ -1076,9 +1129,7 @@ void encoder::generate_texture() {
 
             if (SAI->has_color_residual) {
 
-                /* ------------------------------
-                TEXTURE RESIDUAL DECODING STARTS
-                ------------------------------*/
+
 
                 printf("Decoding texture residual for view %03d_%03d\n", SAI->c, SAI->r);
 
@@ -1087,9 +1138,7 @@ void encoder::generate_texture() {
                     (setup.wasp_kakadu_directory + "/kdu_expand").c_str(),
                     SAI->jp2_residual_path_jp2);
 
-                /* ------------------------------
-                TEXTURE RESIDUAL DECODING ENDS
-                ------------------------------*/
+
 
                 double *residual = dequantize_residual(
                     decoded_residual_image,

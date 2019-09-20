@@ -45,26 +45,62 @@ enum YUV_FORMAT {
     YUV420,
     YUV400};
 
-std::vector<uint16_t> readYUV444_seq_from_disk(
+uint16_t *cropImage_for_HM(
+    const uint16_t *input_image,
+    const uint32_t nr,
+    const uint32_t nc,
+    const uint32_t ncomp,
+    const uint32_t HORP,
+    const uint32_t VERP);
+
+std::vector<uint16_t> upscale(
+    const std::vector<uint16_t> input,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t rz);
+
+std::vector<std::vector<uint16_t>> convertYUV400seqTo444(
+    const std::vector<std::vector<uint16_t>> YUV400,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes);
+
+std::vector<std::vector<uint16_t>> convertYUVseqTo444(
+    const char *inputYUV,
+    YUV_FORMAT input_yuv,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes);
+
+std::vector<std::vector<uint16_t>> convertYUV420seqTo444(
+    const std::vector<std::vector<uint16_t>> YUV420,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes);
+
+std::vector<uint16_t> upscale(
+    const std::vector<uint16_t> input,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t rz);
+
+std::vector<std::vector<uint16_t>>  readYUV444_seq_from_disk(
     const char *input_444,
     const int32_t nframes,
     const int32_t nr,
-    const int32_t nc,
-    const int32_t ncomp);
+    const int32_t nc);
 
-std::vector<uint16_t> readYUV420_seq_from_disk(
+std::vector<std::vector<uint16_t>>  readYUV420_seq_from_disk(
     const char *input_420,
     const int32_t nframes,
     const int32_t nr,
-    const int32_t nc,
-    const int32_t ncomp);
+    const int32_t nc);
 
-std::vector<uint16_t> readYUV400_seq_from_disk(
+std::vector<std::vector<uint16_t>> readYUV400_seq_from_disk(
     const char *input_400,
     const int32_t nframes,
     const int32_t nr,
-    const int32_t nc,
-    const int32_t ncomp);
+    const int32_t nc);
 
 std::vector<uint16_t> padArrayUint16_t_for_HM(
     const uint16_t *input_image,
@@ -78,7 +114,11 @@ void writeYUV444_seq_to_disk(
     const std::vector< std::vector<uint16_t>> &YUV_444_SEQ,
     const char *output_444);
 
-int32_t encodeHM(
+int32_t decodeHM(
+    const char *input_hevc,
+    const char *outputYUV);
+
+long encodeHM(
     const char *input444,
     const char *output_hevc,
     YUV_FORMAT yuvformat,

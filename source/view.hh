@@ -155,7 +155,8 @@ struct view {
   char inverse_depth_raw_pgm[1024];
 
   char encoder_raw_output_444[1024];
-  char decoder_raw_output_444[1024];
+  char decoder_raw_output_YUV[1024];
+  char decoder_raw_output_YUV_444[1024];
 
   char hevc_texture[1024];
 

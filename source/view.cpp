@@ -250,8 +250,14 @@ void setPaths(
         SAI->level);
 
     sprintf(
-        SAI->decoder_raw_output_444,
-        "%s/residual/DEC_YUV_444/%01d_YUV_444.yuv",
+        SAI->decoder_raw_output_YUV,
+        "%s/residual/DEC_YUV/%01d_YUV.yuv",
+        output_dir,
+        SAI->level);
+
+    sprintf(
+        SAI->decoder_raw_output_YUV_444,
+        "%s/residual/DEC_YUV/%01d_YUV_444.yuv",
         output_dir,
         SAI->level);
 

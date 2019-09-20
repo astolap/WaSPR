@@ -37,6 +37,37 @@
 
 #define USE_JP2_DICTIONARY 1
 
+uint16_t *cropImage_for_HM(
+    const uint16_t *input_image,
+    const uint32_t nr,
+    const uint32_t nc,
+    const uint32_t ncomp,
+    const uint32_t HORP,
+    const uint32_t VERP) {
+
+    int32_t nr_cropped = nr - VERP;
+    int32_t nc_cropped = nc - HORP;
+
+    uint16_t *input_image_cropped = new uint16_t[nr_cropped*nc_cropped*ncomp]();
+
+    for (int32_t icomp = 0; icomp < ncomp; icomp++) {
+        for (uint32_t ir = 0; ir < nr - VERP; ir++) {
+            for (uint32_t ic = 0; ic < nc - HORP; ic++) {
+
+                int32_t offset_padded = ir + nr * ic + nr*nc*icomp;
+                int32_t offset_cropped = ir + ic*nr_cropped + nr_cropped*nc_cropped*icomp;
+
+                *(input_image_cropped + offset_cropped) =
+                    *(input_image + offset_padded);
+
+            }
+        }
+    }
+
+    return input_image_cropped;
+
+}
+
 std::vector<uint16_t> padArrayUint16_t_for_HM(
     const uint16_t *input_image,
     const uint32_t nr,
@@ -138,95 +169,264 @@ void writeYUV444_seq_to_disk(
 
 }
 
-std::vector<uint16_t> readYUV444_seq_from_disk(
+std::vector<std::vector<uint16_t>> readYUV444_seq_from_disk(
     const char *input_444,
     const int32_t nframes,
     const int32_t nr,
-    const int32_t nc,
-    const int32_t ncomp) {
+    const int32_t nc) {
 
     FILE *input_444_file = fopen(input_444, "rb");
 
-    const int32_t np = nframes*nr*nc*ncomp;
+    const int32_t np = nframes*nr*nc*3;
 
-    std::vector<uint16_t> YUV444_seq( np,0);
+    std::vector<std::vector<uint16_t>> YUV444_seq;
+    std::vector<uint16_t> YUV444_seq_data(np,0);
 
     fread(
-        YUV444_seq.data(),
+        YUV444_seq_data.data(),
         sizeof(uint16_t),
         np,
         input_444_file);
 
     fclose(input_444_file);
 
+    for (int32_t fr = 0; fr < nframes; fr++) {
+
+        int32_t starti = (nr*nc*3)*fr;
+
+        std::vector<uint16_t> frame(
+            YUV444_seq_data.begin() + starti,
+            YUV444_seq_data.begin() + starti + nr*nc*3);
+
+        YUV444_seq.push_back(frame);
+
+    }
+
     return YUV444_seq;
 
 }
 
-std::vector<uint16_t> readYUV420_seq_from_disk(
+std::vector<std::vector<uint16_t>> readYUV420_seq_from_disk(
     const char *input_420,
     const int32_t nframes,
     const int32_t nr,
-    const int32_t nc,
-    const int32_t ncomp) {
+    const int32_t nc) {
 
     FILE *input_420_file = fopen(input_420, "rb");
 
-    const int32_t np = nframes*(nr*nc + nr / 2 * nc / 2);
+    const int32_t np = nframes*(nr*nc + 2*nr/2*nc/2);
 
-    std::vector<uint16_t> YUV420_seq(np, 0);
+    std::vector<std::vector<uint16_t>> YUV420_seq;
+    std::vector<uint16_t> YUV420_seq_data(np, 0);
 
     fread(
-        YUV420_seq.data(),
+        YUV420_seq_data.data(),
         sizeof(uint16_t),
         np,
         input_420_file);
 
     fclose(input_420_file);
 
+    for (int32_t fr = 0; fr < nframes; fr++) {
+
+        int32_t starti = (nr*nc + nr/2*nc/2*2)*fr;
+
+        std::vector<uint16_t> frame(
+            YUV420_seq_data.begin() + starti,
+            YUV420_seq_data.begin() + starti + nr*nc + 2*nr/2*nc/2);
+
+        YUV420_seq.push_back(frame);
+
+    }
+
     return YUV420_seq;
 
 }
 
-std::vector<uint16_t> readYUV400_seq_from_disk(
+std::vector<std::vector<uint16_t>> readYUV400_seq_from_disk(
     const char *input_400,
     const int32_t nframes,
     const int32_t nr,
-    const int32_t nc,
-    const int32_t ncomp) {
+    const int32_t nc) {
 
-    FILE *input_400_file = fopen(input_420, "rb");
+    FILE *input_400_file = fopen(input_400, "rb");
 
-    const int32_t np = nframes*(nr*nc);
+    const int32_t np = nframes*nr*nc;
 
-    std::vector<uint16_t> YUV400_seq(np, 0);
+    std::vector<std::vector<uint16_t>> YUV400_seq;
+    std::vector<uint16_t> YUV400_seq_data(np, 0);
 
     fread(
-        YUV400_seq.data(),
+        YUV400_seq_data.data(),
         sizeof(uint16_t),
         np,
         input_400_file);
 
     fclose(input_400_file);
 
+    for (int32_t fr = 0; fr < nframes; fr++) {
+
+        int32_t starti = nr*nc*fr;
+
+        std::vector<uint16_t> frame(
+            YUV400_seq_data.begin() + starti,
+            YUV400_seq_data.begin() + starti + nr*nc);
+
+        YUV400_seq.push_back(frame);
+
+    }
+
     return YUV400_seq;
 
 }
 
-std::vector<std::vector<uint16_t>> convertYUVseq(
-    YUV_FORMAT input_yuv,
-    YUV_FORMAT input_yuv,
-    const std::vector<uint16_t> inputSEQ,
+std::vector<std::vector<uint16_t>> convertYUV420seqTo444(
+    const std::vector<std::vector<uint16_t>> YUV420,
     const int32_t nr,
     const int32_t nc,
     const int nframes) {
 
+    std::vector<std::vector<uint16_t>> yuv444;
+
+    for (int32_t fr = 0; fr < nframes; fr++) {
+
+        std::vector<uint16_t>
+            YUV(
+                YUV420.at(fr).begin(),
+                YUV420.at(fr).begin() + nr*nc);
+
+        std::vector<uint16_t> Ud(
+            YUV420.at(fr).begin() + nr*nc + 1,
+            YUV420.at(fr).begin() + nr*nc + nr / 2 * nc / 2);
+        std::vector<uint16_t> Vd(
+            YUV420.at(fr).begin() + nr*nc + 1,
+            YUV420.at(fr).begin() + nr*nc + 2 * (nr / 2 * nc / 2));
+
+        std::vector<uint16_t> U = upscale(Ud, nr / 2, nc / 2, 2);
+        std::vector<uint16_t> V = upscale(Vd, nr / 2, nc / 2, 2);
+
+        YUV.insert(YUV.end(), U.begin(), U.end());
+        YUV.insert(YUV.end(), V.begin(), V.end());
+
+        yuv444.push_back(YUV);
+
+    }
+
+    return yuv444;
 
 
 }
 
+std::vector<uint16_t> upscale(
+    const std::vector<uint16_t> input,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t rz) {
 
-int32_t encodeHM(
+    std::vector<uint16_t> output((nr * rz)*(nc * rz), 0);
+
+    for (int32_t row = 0; row < nr * rz; row += rz) {
+        for (int32_t col = 0; col < nr * rz; col += rz) {
+
+            int32_t lindx_out = row + col*nr;
+            int32_t lindx_in = row/rz + (col/rz)*nr;
+
+            output.at(lindx_out) = input.at(lindx_in);
+            output.at(lindx_out+1) = input.at(lindx_in);
+            output.at(lindx_out+nr*rz) = input.at(lindx_in);
+            output.at(lindx_out+1+nr*rz) = input.at(lindx_in);
+
+
+        }
+    }
+
+    return output;
+}
+
+std::vector<std::vector<uint16_t>> convertYUV400seqTo444(
+    const std::vector<std::vector<uint16_t>> YUV400,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes) {
+
+    std::vector<std::vector<uint16_t>> yuv444;
+
+    std::vector<uint16_t> frame(nr*nc * 3, 0);
+
+    for (int32_t fr = 0; fr < nframes; fr++) {
+
+        memcpy(
+            frame.data(),
+            YUV400.at(fr).data(),
+            sizeof(uint16_t)*nr*nc);
+
+        yuv444.push_back(frame);
+
+    }
+
+    return yuv444;
+
+}
+
+std::vector<std::vector<uint16_t>> convertYUVseqTo444(
+    const char *inputYUV,
+    YUV_FORMAT input_yuv,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes) {
+
+   
+
+    if (input_yuv == YUV444) {
+
+        return readYUV444_seq_from_disk(
+            inputYUV,
+            nframes,
+            nr,
+            nc);
+
+    }
+    if (input_yuv == YUV420) {
+
+        return convertYUV420seqTo444(readYUV420_seq_from_disk(
+            inputYUV,
+            nframes,
+            nr,
+            nc),
+            nr,
+            nc,
+            nframes);
+
+    }
+    if (input_yuv == YUV400) {
+
+        return convertYUV400seqTo444(readYUV444_seq_from_disk(
+            inputYUV,
+            nframes,
+            nr,
+            nc), 
+            nr,
+            nc,
+            nframes);
+
+    }
+
+
+    /*return empty in any case*/
+    std::vector<std::vector<uint16_t>> output444;
+
+    std::vector<uint16_t> emptyvec(nr*nc * 3, 0);
+
+    for (int32_t fr = 0; fr < nframes; fr++) {
+        output444.push_back(emptyvec);
+    }
+
+    return output444;
+
+}
+
+
+long encodeHM(
     const char *input444,
     const char *output_hevc,
     YUV_FORMAT yuvformat,
@@ -285,7 +485,11 @@ int32_t encodeHM(
         QP,
         yuvformatstr.c_str());
 
-    return system_1(hm_call);
+    int32_t status = system_1(hm_call);
+
+    long filesize = aux_GetFileSize(std::string(output_hevc));
+
+    return filesize;
 
 }
 
