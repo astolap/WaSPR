@@ -196,7 +196,7 @@ std::vector<std::vector<uint16_t>> readYUV444_seq_from_disk(
 
         std::vector<uint16_t> frame(
             YUV444_seq_data.begin() + starti,
-            YUV444_seq_data.begin() + starti + nr*nc*3);
+            YUV444_seq_data.begin() + starti + nr*nc*3 - 1);
 
         YUV444_seq.push_back(frame);
 
@@ -233,7 +233,7 @@ std::vector<std::vector<uint16_t>> readYUV420_seq_from_disk(
 
         std::vector<uint16_t> frame(
             YUV420_seq_data.begin() + starti,
-            YUV420_seq_data.begin() + starti + nr*nc + 2*nr/2*nc/2);
+            YUV420_seq_data.begin() + starti + nr*nc + 2*nr/2*nc/2 - 1);
 
         YUV420_seq.push_back(frame);
 
@@ -290,17 +290,17 @@ std::vector<std::vector<uint16_t>> convertYUV420seqTo444(
 
     for (int32_t fr = 0; fr < nframes; fr++) {
 
-        std::vector<uint16_t>
-            YUV(
-                YUV420.at(fr).begin(),
-                YUV420.at(fr).begin() + nr*nc);
+        std::vector<uint16_t> YUV(
+                &YUV420.at(fr)[0],
+                &YUV420.at(fr)[1]);
 
         std::vector<uint16_t> Ud(
-            YUV420.at(fr).begin() + nr*nc + 1,
-            YUV420.at(fr).begin() + nr*nc + nr / 2 * nc / 2);
+            &YUV420.at(fr)[nr*nc],
+            &YUV420.at(fr)[nr*nc + (nr/2)*(nc/2)]);
+
         std::vector<uint16_t> Vd(
-            YUV420.at(fr).begin() + nr*nc + 1,
-            YUV420.at(fr).begin() + nr*nc + 2 * (nr / 2 * nc / 2));
+            &YUV420.at(fr)[nr*nc + (nr / 2)*(nc / 2) ],
+            &YUV420.at(fr)[nr*nc + 2*(nr / 2)*(nc / 2)]);
 
         std::vector<uint16_t> U = upscale(Ud, nr / 2, nc / 2, 2);
         std::vector<uint16_t> V = upscale(Vd, nr / 2, nc / 2, 2);
