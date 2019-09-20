@@ -37,6 +37,282 @@
 
 #define USE_JP2_DICTIONARY 1
 
+std::vector<uint16_t> padArrayUint16_t_for_HM(
+    const uint16_t *input_image,
+    const uint32_t nr,
+    const uint32_t nc,
+    const uint32_t ncomp,
+    const uint32_t HORP,
+    const uint32_t VERP) {
+
+    int32_t nr_padded = nr + VERP;
+    int32_t nc_padded = nc + HORP;
+
+    std::vector<uint16_t> input_image_padded(nr_padded*nc_padded*ncomp,0);
+
+    for (uint32_t icomp = 0; icomp < ncomp; icomp++){
+        for (uint32_t ir = 0; ir < nr_padded - VERP; ir++) {
+            for (uint32_t ic = 0; ic < nc_padded - HORP; ic++) {
+
+                int32_t offset = 
+                    ir + nr * ic + nr*nc*icomp;
+
+                int32_t offset_padded = 
+                    ir + nr_padded * ic + nr_padded*nc_padded*icomp;
+
+                *(input_image_padded.data() + offset_padded) =
+                    *(input_image + offset);
+
+            }
+        }
+    }
+
+    /*bottom borders*/
+    for (uint32_t icomp = 0; icomp < ncomp; icomp++) {
+        for (uint32_t ir = nr_padded - VERP; ir < nr_padded; ir++) {
+            for (uint32_t ic = HORP; ic < nc_padded - HORP; ic++) {
+
+                int32_t offset_from = nr_padded - VERP - 1 + nr_padded * ic + nr_padded*nc_padded*icomp;
+                int32_t offset_to = ir + nr_padded * ic + nr_padded*nc_padded*icomp;
+
+                *(input_image_padded.data() + offset_to) =
+                    *(input_image_padded.data() + offset_from);
+
+            }
+        }
+    }
+
+    /*right borders*/
+    for (uint32_t icomp = 0; icomp < ncomp; icomp++) {
+        for (uint32_t ir = 0; ir < nr_padded; ir++) {
+            for (uint32_t ic = nc_padded - HORP; ic < nc_padded; ic++) {
+
+                int32_t offset_from = ir + nr_padded * (nc_padded - HORP - 1) + nr_padded*nc_padded*icomp;
+                int32_t offset_to = ir + nr_padded * ic + nr_padded*nc_padded*icomp;
+
+                *(input_image_padded.data() + offset_to) =
+                    *(input_image_padded.data() + offset_from);
+
+            }
+        }
+    }
+
+    return input_image_padded;
+
+}
+
+void writeYUV444_seq_to_disk(
+    const std::vector< std::vector<uint16_t>> &YUV_444_SEQ,
+    const char *output_444) {
+
+    aux_ensure_directory(output_444);
+
+    FILE *output_444_file = fopen(output_444, "wb");
+
+    for (uint32_t fr = 0; fr < YUV_444_SEQ.size(); fr++) {
+
+        std::vector<uint16_t> Y;
+        std::vector<uint16_t> U;
+        std::vector<uint16_t> V;
+
+        int32_t nt = YUV_444_SEQ.at(fr).size();
+        int32_t np = nt / 3; /*we assume that input format is 3-channel*/
+
+        /*the image will be transposed, 
+        since we use column major and YUV format is row major*/
+        for (int32_t ii = 0; ii < np; ii++) {
+
+            Y.push_back(YUV_444_SEQ.at(fr).at(ii));
+            U.push_back(YUV_444_SEQ.at(fr).at(ii+np));
+            V.push_back(YUV_444_SEQ.at(fr).at(ii+2*np));
+
+        }
+
+        fwrite(Y.data(), sizeof(uint16_t), np, output_444_file);
+        fwrite(U.data(), sizeof(uint16_t), np, output_444_file);
+        fwrite(V.data(), sizeof(uint16_t), np, output_444_file);
+
+    }
+
+    fclose(output_444_file);
+
+}
+
+std::vector<uint16_t> readYUV444_seq_from_disk(
+    const char *input_444,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t ncomp) {
+
+    FILE *input_444_file = fopen(input_444, "rb");
+
+    const int32_t np = nframes*nr*nc*ncomp;
+
+    std::vector<uint16_t> YUV444_seq( np,0);
+
+    fread(
+        YUV444_seq.data(),
+        sizeof(uint16_t),
+        np,
+        input_444_file);
+
+    fclose(input_444_file);
+
+    return YUV444_seq;
+
+}
+
+std::vector<uint16_t> readYUV420_seq_from_disk(
+    const char *input_420,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t ncomp) {
+
+    FILE *input_420_file = fopen(input_420, "rb");
+
+    const int32_t np = nframes*(nr*nc + nr / 2 * nc / 2);
+
+    std::vector<uint16_t> YUV420_seq(np, 0);
+
+    fread(
+        YUV420_seq.data(),
+        sizeof(uint16_t),
+        np,
+        input_420_file);
+
+    fclose(input_420_file);
+
+    return YUV420_seq;
+
+}
+
+std::vector<uint16_t> readYUV400_seq_from_disk(
+    const char *input_400,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t ncomp) {
+
+    FILE *input_400_file = fopen(input_420, "rb");
+
+    const int32_t np = nframes*(nr*nc);
+
+    std::vector<uint16_t> YUV400_seq(np, 0);
+
+    fread(
+        YUV400_seq.data(),
+        sizeof(uint16_t),
+        np,
+        input_400_file);
+
+    fclose(input_400_file);
+
+    return YUV400_seq;
+
+}
+
+std::vector<std::vector<uint16_t>> convertYUVseq(
+    YUV_FORMAT input_yuv,
+    YUV_FORMAT input_yuv,
+    const std::vector<uint16_t> inputSEQ,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes) {
+
+
+
+}
+
+
+int32_t encodeHM(
+    const char *input444,
+    const char *output_hevc,
+    YUV_FORMAT yuvformat,
+    const int32_t QP,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const char *outputYUV) {
+
+
+    aux_ensure_directory(input444);
+    aux_ensure_directory(output_hevc);
+    aux_ensure_directory(outputYUV);
+
+    const char *input_cfg = 
+        "C:/Local/astolap/Data/JPEG_PLENO_2019/SAN_DIEGO/Matlab/hm_inter.cfg";
+
+    const char *hm_encoder =
+        "C:/Local/astolap/Data/JPEG_PLENO_2019/BRUSSELS/HEVC-HM/bin/vc2015/x64/Release/TAppEncoder.exe";
+
+    std::string yuvformatstr;
+
+    if (yuvformat == YUV400) {
+        yuvformatstr = "400";
+    }
+    if (yuvformat == YUV420) {
+        yuvformatstr = "420";
+    }
+    if (yuvformat == YUV444) {
+        yuvformatstr = "444";
+    }
+
+    char hm_call[2048];
+
+    sprintf(hm_call,
+        "%s"
+        " -c %s"
+        " -i %s"
+        " -o %s"
+        " -fr %d"
+        " -wdt %d"
+        " -hgt %d"
+        " -b %s"
+        " --FramesToBeEncoded=%d"
+        " --QP=%d"
+        " --ChromaFormatIDC=%s",
+        hm_encoder,
+        input_cfg,
+        input444,
+        outputYUV,
+        1,
+        nc,
+        nr,
+        output_hevc,
+        nframes,
+        QP,
+        yuvformatstr.c_str());
+
+    return system_1(hm_call);
+
+}
+
+
+int32_t decodeHM(
+    const char *input_hevc,
+    const char *outputYUV) {
+
+    aux_ensure_directory(outputYUV);
+
+    const char *hm_encoder =
+        "C:/Local/astolap/Data/JPEG_PLENO_2019/BRUSSELS/HEVC-HM/bin/vc2015/x64/Release/TAppDecoder.exe";
+
+    char hm_call[2048];
+
+    sprintf(hm_call,
+        "%s"
+        " -b %s"
+        " -o %s",
+        hm_encoder,
+        input_hevc,
+        outputYUV);
+
+    return system_1(hm_call);
+
+}
+
 void getJP2Header(
     uint8_t *JP2, 
     uint8_t *&header, 

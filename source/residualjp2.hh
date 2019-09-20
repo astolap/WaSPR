@@ -40,14 +40,62 @@ using std::uint8_t;
 
 #include "view.hh"
 
+enum YUV_FORMAT {
+    YUV444,
+    YUV420,
+    YUV400};
+
+std::vector<uint16_t> readYUV444_seq_from_disk(
+    const char *input_444,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t ncomp);
+
+std::vector<uint16_t> readYUV420_seq_from_disk(
+    const char *input_420,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t ncomp);
+
+std::vector<uint16_t> readYUV400_seq_from_disk(
+    const char *input_400,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t ncomp);
+
+std::vector<uint16_t> padArrayUint16_t_for_HM(
+    const uint16_t *input_image,
+    const uint32_t nr,
+    const uint32_t nc,
+    const uint32_t ncomp,
+    const uint32_t HORP,
+    const uint32_t VERP);
+
+void writeYUV444_seq_to_disk(
+    const std::vector< std::vector<uint16_t>> &YUV_444_SEQ,
+    const char *output_444);
+
+int32_t encodeHM(
+    const char *input444,
+    const char *output_hevc,
+    YUV_FORMAT yuvformat,
+    const int32_t QP,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const char *outputYUV);
+
 void getJP2Header(
-    unsigned char *JP2, 
-    unsigned char *&header, 
+    uint8_t *JP2, 
+    uint8_t *&header,
     int32_t JP2Size,
     int32_t &headerSize);
 
 int32_t getJP2DictionaryIndex(
-    unsigned char *JP2header, 
+    uint8_t *JP2header,
     int32_t headerSize,
     std::vector<std::vector<unsigned char>> JP2_dict);
 
@@ -59,7 +107,7 @@ void readResidualFromDisk(
 
 void updateJP2Dictionary(
     std::vector<std::vector<unsigned char>> &JP2_dict,
-    unsigned char *header,
+    uint8_t *header,
     int32_t headerSize);
 
 void writeResidualToDisk(

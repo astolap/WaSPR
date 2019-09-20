@@ -241,6 +241,26 @@ void setPaths(
         SAI->c,
         SAI->r);
 
+    /*HEVC INTER*/
+
+    sprintf(
+        SAI->encoder_raw_output_444,
+        "%s/residual/YUV_444/%01d_YUV_444.yuv",
+        output_dir,
+        SAI->level);
+
+    sprintf(
+        SAI->decoder_raw_output_444,
+        "%s/residual/DEC_YUV_444/%01d_YUV_444.yuv",
+        output_dir,
+        SAI->level);
+
+    sprintf(
+        SAI->hevc_texture,
+        "%s/residual/%01d_YUV.hevc",
+        output_dir,
+        SAI->level);
+
     //sprintf(
     //    SAI->path_raw_texture_residual_at_decoder_ppm,
     //    "%s/residual/JP2_decoded/%01d/%03d_%03d.ppm",
