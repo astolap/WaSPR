@@ -32,7 +32,6 @@
     <ClInclude Include="..\..\source\ppm.hh" />
     <ClInclude Include="..\..\source\predictdepth.hh" />
     <ClInclude Include="..\..\source\psnr.hh" />
-    <ClInclude Include="..\..\source\residualjp2.hh" />
     <ClInclude Include="..\..\source\sparsefilter.hh" />
     <ClInclude Include="..\..\source\view.hh" />
     <ClInclude Include="..\..\source\warping.hh" />
@@ -49,7 +48,7 @@
     <ClCompile Include="..\..\source\ppm.cpp" />
     <ClCompile Include="..\..\source\predictdepth.cpp" />
     <ClCompile Include="..\..\source\psnr.cpp" />
-    <ClCompile Include="..\..\source\residualjp2.cpp" />
+    <ClCompile Include="..\..\source\residual.cpp" />
     <ClCompile Include="..\..\source\sparsefilter.cpp" />
     <ClCompile Include="..\..\source\view.cpp" />
     <ClCompile Include="..\..\source\warping.cpp" />

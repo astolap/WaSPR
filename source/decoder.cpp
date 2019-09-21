@@ -35,7 +35,7 @@
 #include "minconf.hh"
 #include "codestream.hh"
 #include "predictdepth.hh"
-#include "residualjp2.hh"
+#include "residual.hh"
 #include "medianfilter.hh"
 #include "ppm.hh"
 #include "warping.hh"
@@ -462,122 +462,77 @@ void decoder::decode_views() {
             }
         }
 
-        /*make scan order "serpent" in vector "hevc_i_order" */
+        if ((LF + view_indices.at(0))->has_color_residual) {
 
-        int32_t maxr = 0, maxc = 0;
-        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+            /*make scan order "serpent" in vector "hevc_i_order" */
 
-            view *SAI = LF + view_indices.at(ii);
+            int32_t maxr = 0, maxc = 0;
+            for (int32_t ii = 0; ii < view_indices.size(); ii++) {
 
-            if (SAI->r > maxr) {
-                maxr = SAI->r;
-            }
+                std::vector<int32_t> hevc_i_order =
+                    getScanOrder(LF, view_indices);
 
-            if (SAI->c > maxc) {
-                maxc = SAI->c;
-            }
+                /*padding to mincusize*/
 
-        }
+                const int32_t mincusize = 8;
 
-        std::vector< std::vector< int32_t >> varray;
-        for (int r = 0; r <= maxr; r++) {
-            std::vector<int32_t> vect(maxc + 1, 0);
-            varray.push_back(vect);
-        }
+                const int32_t VERP = (mincusize - LF->nr%mincusize);
+                const int32_t HORP = (mincusize - LF->nc%mincusize);
 
-        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+                int32_t nr1 = LF->nr + VERP;
+                int32_t nc1 = LF->nc + HORP;
 
-            view *SAI = LF + view_indices.at(ii);
+                view *SAI0 = LF + hevc_i_order.at(0);
 
-            varray.at(SAI->r).at(SAI->c) = SAI->i_order + 1;
+                int32_t status = decodeHM(
+                    SAI0->hevc_texture,
+                    SAI0->decoder_raw_output_YUV);
 
-        }
+                /*convert (any YUV format) -> YUV444 */
 
-        std::vector<int32_t> hevc_i_order;
-        std::vector<int32_t> horder;
-
-        for (int c = 0; c <= maxc; c++) {
-            horder.push_back(c);
-        }
-
-
-        for (int r = 0; r <= maxr; r++) {
-            for (int c = 0; c <= maxc; c++) {
-
-                if (std::accumulate(
-                    varray.at(r).begin(),
-                    varray.at(r).end(), 0) > 0) {
-
-                    if (varray.at(r).at(c) > 0) {
-                        hevc_i_order.push_back(varray.at(r).at(c));
-                    }
-
-                    std::reverse(horder.begin(), horder.end());
-                }
-            }
-        }
-
-
-        /*padding to mincusize*/
-
-        const int32_t mincusize = 8;
-
-        const int32_t VERP = (mincusize - LF->nr%mincusize);
-        const int32_t HORP = (mincusize - LF->nc%mincusize);
-
-        int32_t nr1 = LF->nr + VERP;
-        int32_t nc1 = LF->nc + HORP;
-
-        view *SAI0 = LF + hevc_i_order.at(0) - 1;
-
-        int32_t status = decodeHM(
-            SAI0->hevc_texture,
-            SAI0->decoder_raw_output_YUV);
-
-        /*convert (any YUV format) -> YUV444 */
-
-        std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
-            SAI0->decoder_raw_output_YUV,
-            YUV420,
-            nr1,
-            nc1,
-            hevc_i_order.size());
-
-        /* write PPM back to correct places, YUV444 -> .ppm */
-
-        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
-
-            view *SAI = LF + hevc_i_order.at(ii) - 1;
-
-            if (SAI->has_color_residual) {
-
-                uint16_t *cropped = cropImage_for_HM(
-                    YUV444_dec.at(ii).data(),
+                std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
+                    SAI0->decoder_raw_output_YUV,
+                    hlevel>1 ? YUVTYPE : YUVTYPE_1LEVEL,
                     nr1,
                     nc1,
-                    SAI->ncomp,
-                    HORP,
-                    VERP);
+                    hevc_i_order.size());
 
-                aux_write16PGMPPM(
-                    SAI->path_raw_texture_residual_at_decoder_ppm,
-                    SAI->nc,
-                    SAI->nr,
-                    SAI->ncomp,
-                    cropped);
+                /* write PPM back to correct places, YUV444 -> .ppm */
 
-                delete[](cropped);
+                for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+
+                    view *SAI = LF + hevc_i_order.at(ii);
+
+                    if (SAI->has_color_residual) {
+
+                        uint16_t *cropped = cropImage_for_HM(
+                            YUV444_dec.at(ii).data(),
+                            nr1,
+                            nc1,
+                            SAI->ncomp,
+                            HORP,
+                            VERP);
+
+                        aux_write16PGMPPM(
+                            SAI->path_raw_texture_residual_at_decoder_ppm,
+                            SAI->nc,
+                            SAI->nr,
+                            SAI->ncomp,
+                            cropped);
+
+                        delete[](cropped);
+
+                    }
+
+                }
+
+                /* ------------------------------
+                TEXTURE RESIDUAL DECODING ENDS
+                ------------------------------*/
 
             }
-
         }
-
-        /* ------------------------------
-        TEXTURE RESIDUAL DECODING ENDS
-        ------------------------------*/
-
     }
-
 
     ii = 0; /*view index*/
     while (ii < number_of_views) {
@@ -612,13 +567,6 @@ void decoder::decode_views() {
                 SAI->nc,
                 SAI->nr,
                 SAI->ncomp,
-                decoded_residual_image);
-
-            aux_write16PGMPPM(
-                SAI->path_raw_texture_residual_at_decoder_ppm,
-                SAI->nc,
-                SAI->nr,
-                3,
                 decoded_residual_image);
 
             double *residual = dequantize_residual(

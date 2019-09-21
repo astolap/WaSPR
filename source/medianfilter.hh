@@ -79,6 +79,8 @@ T *medfilt2D(
 
     T* output = new T[nr*nc]();
 
+    memcpy(output, input, sizeof(T)*nr*nc);
+
     int32_t dsz = (SZ / 2);
     std::vector<T> scores;
 
@@ -88,7 +90,7 @@ T *medfilt2D(
             for (int32_t dy = -dsz; dy <= dsz; dy++) {
                 for (int32_t dx = -dsz; dx <= dsz; dx++) {
                     if ((y + dy) >= 0 && (y + dy) < nr && (x + dx) >= 0 && (x + dx) < nc)
-                        scores.push_back(input[y + dy + (x + dx) * nr]);
+                        scores.push_back(output[y + dy + (x + dx) * nr]);
                 }
             }
             output[y + x * nr] = getMedian(scores);

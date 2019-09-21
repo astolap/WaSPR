@@ -28,7 +28,9 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
-#include "residualjp2.hh"
+#include <numeric>
+
+#include "residual.hh"
 #include "ycbcr.hh"
 #include "ppm.hh"
 #include "fileaux.hh"
@@ -36,6 +38,66 @@
 #include "medianfilter.hh"
 
 #define USE_JP2_DICTIONARY 0 /*not usable with HEVC*/
+
+std::vector<int32_t> getScanOrder(
+    const view *LF, 
+    std::vector<int32_t> view_indices) {
+
+    int32_t maxr = 0, maxc = 0;
+    for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+
+        const view *SAI = LF + view_indices.at(ii);
+
+        if (SAI->r > maxr) {
+            maxr = SAI->r;
+        }
+
+        if (SAI->c > maxc) {
+            maxc = SAI->c;
+        }
+
+    }
+
+    std::vector< std::vector< int32_t >> varray;
+    for (int r = 0; r <= maxr; r++) {
+        std::vector<int32_t> vect(maxc + 1, 0);
+        varray.push_back(vect);
+    }
+
+    for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+
+        const view *SAI = LF + view_indices.at(ii);
+
+        varray.at(SAI->r).at(SAI->c) = SAI->i_order + 1;
+
+    }
+
+    std::vector<int32_t> hevc_i_order;
+    std::vector<int32_t> horder;
+
+    for (int c = 0; c <= maxc; c++) {
+        horder.push_back(c);
+    }
+
+
+    for (int r = 0; r <= maxr; r++) {
+        for (int c = 0; c <= maxc; c++) {
+
+            if (std::accumulate(
+                varray.at(r).begin(),
+                varray.at(r).end(), 0) > 0) {
+
+                if (varray.at(r).at(c) > 0) {
+                    hevc_i_order.push_back(varray.at(r).at(c) - 1);
+                }
+
+                std::reverse(horder.begin(), horder.end());
+            }
+        }
+    }
+
+    return hevc_i_order;
+}
 
 uint16_t *cropImage_for_HM(
     const uint16_t *input_image,
@@ -253,7 +315,6 @@ std::vector<std::vector<uint16_t>> readYUV400_seq_from_disk(
 
     const int32_t np = nframes*nr*nc;
 
-    std::vector<std::vector<uint16_t>> YUV400_seq;
     std::vector<uint16_t> YUV400_seq_data(np, 0);
 
     fread(
@@ -263,6 +324,8 @@ std::vector<std::vector<uint16_t>> readYUV400_seq_from_disk(
         input_400_file);
 
     fclose(input_400_file);
+
+    std::vector<std::vector<uint16_t>> YUV400_seq;
 
     for (int32_t fr = 0; fr < nframes; fr++) {
 
@@ -352,7 +415,7 @@ std::vector<std::vector<uint16_t>> convertYUV400seqTo444(
 
     std::vector<std::vector<uint16_t>> yuv444;
 
-    std::vector<uint16_t> frame(nr*nc * 3, 0);
+    std::vector<uint16_t> frame(nr*nc * 3, 512);
 
     for (int32_t fr = 0; fr < nframes; fr++) {
 
@@ -401,7 +464,7 @@ std::vector<std::vector<uint16_t>> convertYUVseqTo444(
     }
     if (input_yuv == YUV400) {
 
-        return convertYUV400seqTo444(readYUV444_seq_from_disk(
+        return convertYUV400seqTo444(readYUV400_seq_from_disk(
             inputYUV,
             nframes,
             nr,

@@ -24,8 +24,11 @@
 *     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RESIDUALJP2_HH
-#define RESIDUALJP2_HH
+#ifndef RESIDUAL_HH
+#define RESIDUAL_HH
+
+#define YUVTYPE YUV400
+#define YUVTYPE_1LEVEL YUV420
 
 #include <cstdint>
 
@@ -44,6 +47,10 @@ enum YUV_FORMAT {
     YUV444,
     YUV420,
     YUV400};
+
+std::vector<int32_t> getScanOrder(
+    const view *LF,
+    std::vector<int32_t> view_indices);
 
 uint16_t *cropImage_for_HM(
     const uint16_t *input_image,
