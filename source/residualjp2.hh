@@ -54,13 +54,13 @@ uint16_t *cropImage_for_HM(
     const uint32_t VERP);
 
 std::vector<uint16_t> upscale(
-    const std::vector<uint16_t> input,
+    const std::vector<uint16_t> &input,
     const int32_t nr,
     const int32_t nc,
     const int32_t rz);
 
 std::vector<std::vector<uint16_t>> convertYUV400seqTo444(
-    const std::vector<std::vector<uint16_t>> YUV400,
+    const std::vector<std::vector<uint16_t>> &YUV400,
     const int32_t nr,
     const int32_t nc,
     const int nframes);
@@ -73,16 +73,10 @@ std::vector<std::vector<uint16_t>> convertYUVseqTo444(
     const int nframes);
 
 std::vector<std::vector<uint16_t>> convertYUV420seqTo444(
-    const std::vector<std::vector<uint16_t>> YUV420,
+    const std::vector<std::vector<uint16_t>> &YUV420,
     const int32_t nr,
     const int32_t nc,
     const int nframes);
-
-std::vector<uint16_t> upscale(
-    const std::vector<uint16_t> input,
-    const int32_t nr,
-    const int32_t nc,
-    const int32_t rz);
 
 std::vector<std::vector<uint16_t>>  readYUV444_seq_from_disk(
     const char *input_444,

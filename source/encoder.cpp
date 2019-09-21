@@ -931,185 +931,240 @@ void encoder::generate_texture() {
 
         }
 
-        /* encode residual images using JP2 for all views at level=hlevel
-        here we can substitute JP2 with MuLE etc*/
+        /* encode residual images using HEVC for all views at level=hlevel
+        which have texture residual rate >0,
+        here we can substitute HEVC with MuLE etc*/
 
         /*make scan order "serpent" in vector "hevc_i_order" */
-        
-        int32_t maxr=0, maxc=0;
-        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+        if ((LF + view_indices.at(0))->residual_rate_color > 0) {
 
-            view *SAI = LF + view_indices.at(ii);
+            int32_t maxr = 0, maxc = 0;
+            for (int32_t ii = 0; ii < view_indices.size(); ii++) {
 
-            if (SAI->r > maxr) {
-                maxr = SAI->r;
+                view *SAI = LF + view_indices.at(ii);
+
+                if (SAI->r > maxr) {
+                    maxr = SAI->r;
+                }
+
+                if (SAI->c > maxc) {
+                    maxc = SAI->c;
+                }
+
             }
 
-            if (SAI->c > maxc) {
-                maxc = SAI->c;
+            std::vector< std::vector< int32_t >> varray;
+            for (int r = 0; r <= maxr; r++) {
+                std::vector<int32_t> vect(maxc + 1, 0);
+                varray.push_back(vect);
             }
 
-        }
+            for (int32_t ii = 0; ii < view_indices.size(); ii++) {
 
-        std::vector< std::vector< int32_t >> varray;
-        for (int r = 0; r <= maxr; r++) {
-            std::vector<int32_t> vect(maxc + 1, 0);
-            varray.push_back(vect);
-        }
+                view *SAI = LF + view_indices.at(ii);
 
-        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+                varray.at(SAI->r).at(SAI->c) = SAI->i_order + 1;
 
-            view *SAI = LF + view_indices.at(ii);
+            }
 
-            varray.at(SAI->r).at(SAI->c) = SAI->i_order+1;
-
-        }
-
-        std::vector<int32_t> hevc_i_order;
-        std::vector<int32_t> horder;
-        for (int c = 0; c < maxc; c++) {
-            horder.push_back(c);
-        }
-
-
-        for (int r = 0; r <= maxr; r++) {
+            std::vector<int32_t> hevc_i_order;
+            std::vector<int32_t> horder;
             for (int c = 0; c <= maxc; c++) {
+                horder.push_back(c);
+            }
 
-                if (std::accumulate(
-                    varray.at(r).begin(), 
-                    varray.at(r).end(), 0) > 0) {
 
-                    if (varray.at(r).at(c) > 0) {
-                        hevc_i_order.push_back(varray.at(r).at(c));
+            for (int r = 0; r <= maxr; r++) {
+                for (int c = 0; c <= maxc; c++) {
+
+                    if (std::accumulate(
+                        varray.at(r).begin(),
+                        varray.at(r).end(), 0) > 0) {
+
+                        if (varray.at(r).at(c) > 0) {
+                            hevc_i_order.push_back(varray.at(r).at(c));
+                        }
+
+                        std::reverse(horder.begin(), horder.end());
                     }
-
-                    std::reverse(horder.begin(), horder.end());
                 }
             }
-        }
 
 
-        std::vector< std::vector<uint16_t>> YUV_444_SEQ;
+            std::vector< std::vector<uint16_t>> YUV_444_SEQ;
 
-        /*padding to mincusize*/
+            /*padding to mincusize*/
 
-        int32_t mincusize = 8;
+            const int32_t mincusize = 8;
 
-        int32_t VERP = (mincusize - LF->nr%mincusize);
-        int32_t HORP = (mincusize - LF->nc%mincusize);
+            const int32_t VERP = (mincusize - LF->nr%mincusize);
+            const int32_t HORP = (mincusize - LF->nc%mincusize);
 
-        int32_t nr1 = LF->nr + VERP;
-        int32_t nc1 = LF->nc + HORP;
+            int32_t nr1 = LF->nr + VERP;
+            int32_t nc1 = LF->nc + HORP;
 
-        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+            for (int32_t ii = 0; ii < view_indices.size(); ii++) {
 
-            view *SAI = LF + hevc_i_order.at(ii)-1; 
+                view *SAI = LF + hevc_i_order.at(ii) - 1;
 
-            if (SAI->residual_rate_color > 0) {
+                if (SAI->residual_rate_color > 0) {
 
-                /* ------------------------------
-                TEXTURE RESIDUAL ENCODING STARTS
-                ------------------------------*/
+                    /* ------------------------------
+                    TEXTURE RESIDUAL ENCODING STARTS
+                    ------------------------------*/
 
-                printf("Encoding texture residual for view %03d_%03d\n", SAI->c, SAI->r);
+                    printf("Encoding texture residual for view %03d_%03d\n", SAI->c, SAI->r);
 
-                aux_read16PGMPPM(
-                    SAI->path_raw_texture_residual_at_encoder_ppm,
-                    SAI->nc,
-                    SAI->nr,
-                    SAI->ncomp,
-                    SAI->residual_image);    
+                    aux_read16PGMPPM(
+                        SAI->path_raw_texture_residual_at_encoder_ppm,
+                        SAI->nc,
+                        SAI->nr,
+                        SAI->ncomp,
+                        SAI->residual_image);
 
-                std::vector<uint16_t> paddedi = padArrayUint16_t_for_HM(
-                    SAI->residual_image, 
-                    SAI->nr,
-                    SAI->nc, 
-                    SAI->ncomp,
-                    HORP, 
-                    VERP);
+                    std::vector<uint16_t> paddedi = padArrayUint16_t_for_HM(
+                        SAI->residual_image,
+                        SAI->nr,
+                        SAI->nc,
+                        SAI->ncomp,
+                        HORP,
+                        VERP);
 
-                YUV_444_SEQ.push_back(paddedi);
+                    YUV_444_SEQ.push_back(paddedi);
 
-                delete[](SAI->residual_image);
-                SAI->residual_image = nullptr;
+                    delete[](SAI->residual_image);
+                    SAI->residual_image = nullptr;
 
+
+                }
 
             }
 
-        }
+            view *SAI0 = LF + hevc_i_order.at(0) - 1;
+            writeYUV444_seq_to_disk(
+                YUV_444_SEQ,
+                SAI0->encoder_raw_output_444);
 
-        view *SAI0 = LF + hevc_i_order.at(0)-1;
-        writeYUV444_seq_to_disk(
-            YUV_444_SEQ,
-            SAI0->encoder_raw_output_444);
+            /* encode HM, YUV444 -> .hevc (any YUV format) */
+            std::vector<double> bpps;
+            std::vector<int32_t> QPs;
 
-        /* encode HM, YUV444 -> .hevc (any YUV format) */
+            int32_t QPstep = 3;
 
-        for (int32_t QP = 0; QP < 51; QP += 51) {
+            bool QPsearch_interrupt = false;
+
+            for (int32_t QP = 0; QP < 51; QP += QPstep) {
+
+                long bytes_hevc = encodeHM(
+                    SAI0->encoder_raw_output_444,
+                    SAI0->hevc_texture,
+                    YUV420,
+                    QP,
+                    YUV_444_SEQ.size(),
+                    nc1,
+                    nr1,
+                    SAI0->decoder_raw_output_YUV); /*transpose for nr,nc*/
+
+                double bpphevc =
+                    double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
+
+                printf("\nQP=%d\tbpp=\t%f\n", QP, bpphevc);
+
+                bpps.push_back(bpphevc);
+                QPs.push_back(QP);
+
+                if (*(bpps.end() - 1) < SAI0->residual_rate_color) {
+                    break;
+                }
+
+            }
+
+            int32_t QPfinal = 0;
+
+            /*use first one*/
+            if (bpps.size() == 1) {
+                QPfinal = QPs.at(0);
+            }
+            /*use last one*/
+            else if (*(bpps.end() - 1) > SAI0->residual_rate_color) {
+                QPfinal = *(QPs.end() - 1);
+            }
+            /*interpolate*/
+            else {
+
+                double dx = *(bpps.end()-1) - *(bpps.end() - 2);
+                double dy = QPstep;// *(QPs.end() - 1) - *(QPs.end() - 2);
+
+                double diffx = SAI0->residual_rate_color - *(bpps.end()-2);
+
+                QPfinal = round( double(*(QPs.end()-2) + diffx*(dy/dx)) );
+
+            }
 
             long bytes_hevc = encodeHM(
                 SAI0->encoder_raw_output_444,
                 SAI0->hevc_texture,
                 YUV420,
-                QP,
+                QPfinal,
                 YUV_444_SEQ.size(),
                 nc1,
                 nr1,
                 SAI0->decoder_raw_output_YUV); /*transpose for nr,nc*/
 
-            double bpphevc = 
+            double bpphevc =
                 double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
 
-            printf("\nQP=%d\tbpp=\t%f", QP,bpphevc);
+            printf("\nFinal QP=%d\tbpp=\t%f\n", QPfinal, bpphevc);
 
-        }
+            /* decode HM, .hevc (any YUV format) -> (any YUV format)  */
 
-        /* decode HM, .hevc (any YUV format) -> (any YUV format)  */
+            /* ------------------------------
+            TEXTURE RESIDUAL DECODING STARTS
+            ------------------------------*/
 
-        /* ------------------------------
-        TEXTURE RESIDUAL DECODING STARTS
-        ------------------------------*/
+            int32_t status = decodeHM(
+                SAI0->hevc_texture,
+                SAI0->decoder_raw_output_YUV);
 
-        int32_t status = decodeHM(
-            SAI0->hevc_texture,
-            SAI0->decoder_raw_output_YUV);
+            /*convert (any YUV format) -> YUV444 */
 
-        /*convert (any YUV format) -> YUV444 */
+            std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
+                SAI0->decoder_raw_output_YUV,
+                YUV420,
+                nr1,
+                nc1,
+                hevc_i_order.size());
 
-        std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
-            SAI0->decoder_raw_output_YUV,
-            YUV420,
-            nr1,
-            nc1,
-            hevc_i_order.size());
+            /* write PPM back to correct places, YUV444 -> .ppm */
 
-        /* write PPM back to correct places, YUV444 -> .ppm */
+            for (int32_t ii = 0; ii < view_indices.size(); ii++) {
 
-        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+                view *SAI = LF + hevc_i_order.at(ii) - 1;
 
-            view *SAI = LF + hevc_i_order.at(ii) - 1;
+                if (SAI->residual_rate_color > 0) {
 
-            if (SAI->residual_rate_color > 0) {
+                    uint16_t *cropped = cropImage_for_HM(
+                        YUV444_dec.at(ii).data(),
+                        nr1,
+                        nc1,
+                        SAI->ncomp,
+                        HORP,
+                        VERP);
 
-                uint16_t *cropped = cropImage_for_HM(
-                    YUV444_dec.at(ii).data(),
-                    nr1,
-                    nc1,
-                    SAI->ncomp,
-                    HORP,
-                    VERP);
+                    aux_write16PGMPPM(
+                        SAI->path_raw_texture_residual_at_decoder_ppm,
+                        SAI->nc,
+                        SAI->nr,
+                        SAI->ncomp,
+                        cropped);
 
-                aux_write16PGMPPM(
-                    SAI->path_raw_texture_residual_at_decoder_ppm,
-                    SAI->nc,
-                    SAI->nr,
-                    SAI->ncomp,
-                    cropped);
+                    SAI->has_color_residual = true;
 
-                delete[](cropped);
+                    delete[](cropped);
+
+                }
 
             }
-
         }
 
         /* ------------------------------
@@ -1129,16 +1184,16 @@ void encoder::generate_texture() {
 
             if (SAI->has_color_residual) {
 
-
-
                 printf("Decoding texture residual for view %03d_%03d\n", SAI->c, SAI->r);
 
-                uint16_t *decoded_residual_image = decode_residual_JP2(
+                uint16_t *decoded_residual_image;
+
+                aux_read16PGMPPM(
                     SAI->path_raw_texture_residual_at_decoder_ppm,
-                    (setup.wasp_kakadu_directory + "/kdu_expand").c_str(),
-                    SAI->jp2_residual_path_jp2);
-
-
+                    SAI->nc,
+                    SAI->nr,
+                    SAI->ncomp,
+                    decoded_residual_image);
 
                 double *residual = dequantize_residual(
                     decoded_residual_image,
@@ -1256,6 +1311,8 @@ void encoder::write_bitstream() {
         1,
         output_LF_file) * sizeof(int32_t);
 
+    std::vector< bool > levels_already_written_to_codestream(maxh,0); 
+
     for (int32_t ii = 0; ii < n_views_total; ii++) {
 
         view *SAI = LF + ii;
@@ -1268,11 +1325,14 @@ void encoder::write_bitstream() {
             output_LF_file);
 
         if (SAI->has_color_residual) {
-            writeResidualToDisk(
-                SAI->jp2_residual_path_jp2,
-                output_LF_file,
-                n_bytes_residual,
-                JP2_dict);
+            if (!levels_already_written_to_codestream.at(SAI->level - 1)) {
+                writeResidualToDisk(
+                    SAI->hevc_texture,
+                    output_LF_file,
+                    n_bytes_residual,
+                    JP2_dict);
+            }
+            levels_already_written_to_codestream.at(SAI->level - 1) = true;
         }
 
         if (SAI->has_depth_residual) {

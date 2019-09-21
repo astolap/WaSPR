@@ -35,7 +35,7 @@
 #include "clip.hh"
 #include "medianfilter.hh"
 
-#define USE_JP2_DICTIONARY 1
+#define USE_JP2_DICTIONARY 0 /*not usable with HEVC*/
 
 uint16_t *cropImage_for_HM(
     const uint16_t *input_image,
@@ -233,7 +233,7 @@ std::vector<std::vector<uint16_t>> readYUV420_seq_from_disk(
 
         std::vector<uint16_t> frame(
             YUV420_seq_data.begin() + starti,
-            YUV420_seq_data.begin() + starti + nr*nc + 2*nr/2*nc/2 - 1);
+            YUV420_seq_data.begin() + starti + nr*nc + 2*nr/2*nc/2);
 
         YUV420_seq.push_back(frame);
 
@@ -281,7 +281,7 @@ std::vector<std::vector<uint16_t>> readYUV400_seq_from_disk(
 }
 
 std::vector<std::vector<uint16_t>> convertYUV420seqTo444(
-    const std::vector<std::vector<uint16_t>> YUV420,
+    const std::vector<std::vector<uint16_t>> &YUV420,
     const int32_t nr,
     const int32_t nc,
     const int nframes) {
@@ -291,16 +291,16 @@ std::vector<std::vector<uint16_t>> convertYUV420seqTo444(
     for (int32_t fr = 0; fr < nframes; fr++) {
 
         std::vector<uint16_t> YUV(
-                &YUV420.at(fr)[0],
-                &YUV420.at(fr)[1]);
+                YUV420.at(fr).begin(),
+                YUV420.at(fr).begin()+nr*nc);
 
         std::vector<uint16_t> Ud(
             &YUV420.at(fr)[nr*nc],
             &YUV420.at(fr)[nr*nc + (nr/2)*(nc/2)]);
 
         std::vector<uint16_t> Vd(
-            &YUV420.at(fr)[nr*nc + (nr / 2)*(nc / 2) ],
-            &YUV420.at(fr)[nr*nc + 2*(nr / 2)*(nc / 2)]);
+            YUV420.at(fr).begin()+nr*nc + (nr / 2)*(nc / 2),
+            YUV420.at(fr).end());
 
         std::vector<uint16_t> U = upscale(Ud, nr / 2, nc / 2, 2);
         std::vector<uint16_t> V = upscale(Vd, nr / 2, nc / 2, 2);
@@ -318,7 +318,7 @@ std::vector<std::vector<uint16_t>> convertYUV420seqTo444(
 }
 
 std::vector<uint16_t> upscale(
-    const std::vector<uint16_t> input,
+    const std::vector<uint16_t> &input,
     const int32_t nr,
     const int32_t nc,
     const int32_t rz) {
@@ -326,9 +326,10 @@ std::vector<uint16_t> upscale(
     std::vector<uint16_t> output((nr * rz)*(nc * rz), 0);
 
     for (int32_t row = 0; row < nr * rz; row += rz) {
-        for (int32_t col = 0; col < nr * rz; col += rz) {
+        for (int32_t col = 0; col < nc * rz; col += rz) {
 
-            int32_t lindx_out = row + col*nr;
+            int32_t lindx_out = row + col*nr*rz;
+
             int32_t lindx_in = row/rz + (col/rz)*nr;
 
             output.at(lindx_out) = input.at(lindx_in);
@@ -344,7 +345,7 @@ std::vector<uint16_t> upscale(
 }
 
 std::vector<std::vector<uint16_t>> convertYUV400seqTo444(
-    const std::vector<std::vector<uint16_t>> YUV400,
+    const std::vector<std::vector<uint16_t>> &YUV400,
     const int32_t nr,
     const int32_t nc,
     const int nframes) {

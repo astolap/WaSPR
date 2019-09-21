@@ -262,8 +262,8 @@ spfilter getGlobalSparseFilter(
     }
 
     for (int iu = 0; iu < MT; iu++) {
-        printf("\n\t%d", sparse_filter.regressor_indexes.at(iu));
-        printf("\n\t%f", sparse_filter.filter_coefficients.at(iu));
+        //printf("\n\t%d", sparse_filter.regressor_indexes.at(iu));
+        //printf("\n\t%f", sparse_filter.filter_coefficients.at(iu));
     }
 
     sparse_filter.Ms = Ms;

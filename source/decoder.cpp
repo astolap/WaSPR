@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <numeric>
 
 #include "decoder.hh"
 #include "view.hh"
@@ -382,12 +383,17 @@ void decoder::decode_views() {
 
     int32_t ii = 0; /*view index*/
 
+
+    std::vector<bool> levels_already_written_to_codestream;
+
     while (ii < number_of_views) {
 
         view *SAI = LF + ii;
         ii++;
 
         initView(SAI);
+
+        SAI->i_order = ii-1;
 
         SAI->nr = number_of_rows;
         SAI->nc = number_of_columns;
@@ -411,29 +417,16 @@ void decoder::decode_views() {
             "",
             setup.output_directory.c_str());
 
-        if (feof(input_LF)) {
-            printf("File reading error. Terminating\t...\n");
-            exit(0);
-        }
-
-        printf("Decoding view %03d_%03d\n", SAI->c, SAI->r);
-
-        SAI->color = new uint16_t[SAI->nr * SAI->nc * 3]();
-        SAI->depth = new uint16_t[SAI->nr * SAI->nc]();
-
-        /*main texture prediction here*/
-        predict_texture_view(SAI);
-
-        /*extract residuals from codestream*/
         if (SAI->has_color_residual) {
-
-            printf("Decoding texture residual for view %03d_%03d\n", SAI->c, SAI->r);
-
-            readResidualFromDisk(
-                SAI->jp2_residual_path_jp2,
-                n_bytes_residual,
-                input_LF,
-                JP2_dict);
+            if (levels_already_written_to_codestream.size()<SAI->level)
+            {
+                readResidualFromDisk(
+                    SAI->hevc_texture,
+                    n_bytes_residual,
+                    input_LF,
+                    JP2_dict);
+                levels_already_written_to_codestream.push_back(true);
+            }   
         }
 
         if (SAI->has_depth_residual) {
@@ -447,6 +440,159 @@ void decoder::decode_views() {
                 JP2_dict);
         }
 
+        if (feof(input_LF)) {
+            printf("File reading error. Terminating\t...\n");
+            exit(0);
+        }
+    }
+
+    /* extract texture residuals from hevc stream */
+    maxh = get_highest_level(LF, number_of_views);
+
+    for (int32_t hlevel = 1; hlevel <= maxh; hlevel++) {
+
+        printf("\nDecoding HEVC texture of hierarchical level: %d\n\n",
+            hlevel);
+
+        std::vector< int32_t > view_indices;
+
+        for (int32_t ii = 0; ii < number_of_views; ii++) {
+            if ((LF + ii)->level == hlevel) {
+                view_indices.push_back(ii);
+            }
+        }
+
+        /*make scan order "serpent" in vector "hevc_i_order" */
+
+        int32_t maxr = 0, maxc = 0;
+        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+
+            view *SAI = LF + view_indices.at(ii);
+
+            if (SAI->r > maxr) {
+                maxr = SAI->r;
+            }
+
+            if (SAI->c > maxc) {
+                maxc = SAI->c;
+            }
+
+        }
+
+        std::vector< std::vector< int32_t >> varray;
+        for (int r = 0; r <= maxr; r++) {
+            std::vector<int32_t> vect(maxc + 1, 0);
+            varray.push_back(vect);
+        }
+
+        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+
+            view *SAI = LF + view_indices.at(ii);
+
+            varray.at(SAI->r).at(SAI->c) = SAI->i_order + 1;
+
+        }
+
+        std::vector<int32_t> hevc_i_order;
+        std::vector<int32_t> horder;
+
+        for (int c = 0; c <= maxc; c++) {
+            horder.push_back(c);
+        }
+
+
+        for (int r = 0; r <= maxr; r++) {
+            for (int c = 0; c <= maxc; c++) {
+
+                if (std::accumulate(
+                    varray.at(r).begin(),
+                    varray.at(r).end(), 0) > 0) {
+
+                    if (varray.at(r).at(c) > 0) {
+                        hevc_i_order.push_back(varray.at(r).at(c));
+                    }
+
+                    std::reverse(horder.begin(), horder.end());
+                }
+            }
+        }
+
+
+        /*padding to mincusize*/
+
+        const int32_t mincusize = 8;
+
+        const int32_t VERP = (mincusize - LF->nr%mincusize);
+        const int32_t HORP = (mincusize - LF->nc%mincusize);
+
+        int32_t nr1 = LF->nr + VERP;
+        int32_t nc1 = LF->nc + HORP;
+
+        view *SAI0 = LF + hevc_i_order.at(0) - 1;
+
+        int32_t status = decodeHM(
+            SAI0->hevc_texture,
+            SAI0->decoder_raw_output_YUV);
+
+        /*convert (any YUV format) -> YUV444 */
+
+        std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
+            SAI0->decoder_raw_output_YUV,
+            YUV420,
+            nr1,
+            nc1,
+            hevc_i_order.size());
+
+        /* write PPM back to correct places, YUV444 -> .ppm */
+
+        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+
+            view *SAI = LF + hevc_i_order.at(ii) - 1;
+
+            if (SAI->has_color_residual) {
+
+                uint16_t *cropped = cropImage_for_HM(
+                    YUV444_dec.at(ii).data(),
+                    nr1,
+                    nc1,
+                    SAI->ncomp,
+                    HORP,
+                    VERP);
+
+                aux_write16PGMPPM(
+                    SAI->path_raw_texture_residual_at_decoder_ppm,
+                    SAI->nc,
+                    SAI->nr,
+                    SAI->ncomp,
+                    cropped);
+
+                delete[](cropped);
+
+            }
+
+        }
+
+        /* ------------------------------
+        TEXTURE RESIDUAL DECODING ENDS
+        ------------------------------*/
+
+    }
+
+
+    ii = 0; /*view index*/
+    while (ii < number_of_views) {
+
+        view *SAI = LF + ii;
+        ii++;
+
+        printf("Decoding view %03d_%03d\n", SAI->c, SAI->r);
+
+        SAI->color = new uint16_t[SAI->nr * SAI->nc * 3]();
+        SAI->depth = new uint16_t[SAI->nr * SAI->nc]();
+
+        /*main texture prediction here*/
+        predict_texture_view(SAI);
+
         /* apply texture residual */
         if (SAI->has_color_residual) {
 
@@ -459,10 +605,14 @@ void decoder::decode_views() {
                 offset = (1 << bpc) - 1; /* 10bit images currently */
             }
 
-            uint16_t *decoded_residual_image = decode_residual_JP2(
+            uint16_t *decoded_residual_image;
+
+            aux_read16PGMPPM(
                 SAI->path_raw_texture_residual_at_decoder_ppm,
-                (setup.wasp_kakadu_directory + "/kdu_expand").c_str(),
-                SAI->jp2_residual_path_jp2);
+                SAI->nc,
+                SAI->nr,
+                SAI->ncomp,
+                decoded_residual_image);
 
             aux_write16PGMPPM(
                 SAI->path_raw_texture_residual_at_decoder_ppm,
