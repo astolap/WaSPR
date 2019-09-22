@@ -49,10 +49,6 @@ WaSPConfig::~WaSPConfig() {
 
 bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
 
-    //if (argc < 7) {
-    //    return false;
-    //}
-
     if (argc > 7) {
         return false;
     }
@@ -60,27 +56,27 @@ bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
     for (int32_t ii = 1; ii < argc - 1; ii += 2) {
 
         if (!strcmp(argv[ii], "-i")) {
-            WaSP_encoder_setup.input_directory = std::string(argv[ii + 1]);
+            WaSP_setup.input_directory = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "--input")) {
-            WaSP_encoder_setup.input_directory = std::string(argv[ii + 1]);
+            WaSP_setup.input_directory = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "-o")) {
-            WaSP_encoder_setup.output_directory = std::string(argv[ii + 1]);
+            WaSP_setup.output_directory = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "--output")) {
-            WaSP_encoder_setup.output_directory = std::string(argv[ii + 1]);
+            WaSP_setup.output_directory = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "-k")) {
-            WaSP_encoder_setup.wasp_kakadu_directory = std::string(argv[ii + 1]);
+            WaSP_setup.wasp_kakadu_directory = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "--kakadu")) {
-            WaSP_encoder_setup.wasp_kakadu_directory = std::string(argv[ii + 1]);
+            WaSP_setup.wasp_kakadu_directory = std::string(argv[ii + 1]);
         }
 
         else {
@@ -89,17 +85,17 @@ bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
 
     }
 
-    if (WaSP_encoder_setup.input_directory.length() == 0) {
+    if (WaSP_setup.input_directory.length() == 0) {
         printf("\n Input directory not set\n");
         return false;
     }
 
-    if (WaSP_encoder_setup.output_directory.length() == 0) {
+    if (WaSP_setup.output_directory.length() == 0) {
         printf("\n Output directory not set\n");
         return false;
     }
 
-    if (WaSP_encoder_setup.wasp_kakadu_directory.length() == 0) {
+    if (WaSP_setup.wasp_kakadu_directory.length() == 0) {
         printf("\n Kakadu directory not set\n");
         return false;
     }
@@ -144,57 +140,49 @@ void WaSPConfig::print_intro() {
 
 bool WaSPConfig::parseCommandLine_encoder(int argc, char *argv[]) {
 
-    //if (argc < 9) {
-    //    return false;
-    //}
-
-    //if (argc > 10) {
-    //    return false;
-    //}
-
-    WaSP_encoder_setup.sparse_subsampling = 1;
+    WaSP_setup.sparse_subsampling = 1;
 
     for (int32_t ii = 1; ii < argc-1; ii+=2) {
 
         if (!strcmp(argv[ii], "-c")) {
-            WaSP_encoder_setup.config_file = std::string(argv[ii + 1]);
+            WaSP_setup.config_file = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "--config")) {
-            WaSP_encoder_setup.config_file = std::string(argv[ii + 1]);
+            WaSP_setup.config_file = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "-i")) {
-            WaSP_encoder_setup.input_directory = std::string(argv[ii+1]);
+            WaSP_setup.input_directory = std::string(argv[ii+1]);
         }
 
         else if (!strcmp(argv[ii], "--input")) {
-            WaSP_encoder_setup.input_directory = std::string(argv[ii + 1]);
+            WaSP_setup.input_directory = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "-o")) {
-            WaSP_encoder_setup.output_directory = std::string(argv[ii+1]);
+            WaSP_setup.output_directory = std::string(argv[ii+1]);
         }
 
         else if (!strcmp(argv[ii], "--output")) {
-            WaSP_encoder_setup.output_directory = std::string(argv[ii + 1]);
+            WaSP_setup.output_directory = std::string(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "-k")) {
-            WaSP_encoder_setup.wasp_kakadu_directory = std::string(argv[ii+1]);
+            WaSP_setup.wasp_kakadu_directory = std::string(argv[ii+1]);
         }
 
         else if (!strcmp(argv[ii], "--kakadu")) {
-            WaSP_encoder_setup.wasp_kakadu_directory = std::string(argv[ii + 1]);
+            WaSP_setup.wasp_kakadu_directory = std::string(argv[ii + 1]);
 
         }
 
         else if (!strcmp(argv[ii], "-s")) {
-            WaSP_encoder_setup.sparse_subsampling = atoi(argv[ii + 1]);
+            WaSP_setup.sparse_subsampling = atoi(argv[ii + 1]);
         }
 
         else if (!strcmp(argv[ii], "--sparse_subsampling")) {
-            WaSP_encoder_setup.sparse_subsampling = atoi(argv[ii + 1]);
+            WaSP_setup.sparse_subsampling = atoi(argv[ii + 1]);
 
         }
 
@@ -204,30 +192,32 @@ bool WaSPConfig::parseCommandLine_encoder(int argc, char *argv[]) {
 
     }
 
-    if (WaSP_encoder_setup.config_file.length() == 0) {
+    if (WaSP_setup.config_file.length() == 0) {
         printf("\n Config file (.json) not set\n");
         return false;
     }
 
-    if (WaSP_encoder_setup.input_directory.length() == 0) {
+    if (WaSP_setup.input_directory.length() == 0) {
         printf("\n Input directory not set\n");
         return false;
     }
 
-    if (WaSP_encoder_setup.output_directory.length() == 0) {
+    if (WaSP_setup.output_directory.length() == 0) {
         printf("\n Output directory not set\n");
         return false;
     }
 
-    if (WaSP_encoder_setup.wasp_kakadu_directory.length() == 0) {
+    if (WaSP_setup.wasp_kakadu_directory.length() == 0) {
         printf("\n Kakadu directory not set\n");
         return false;
     }
 
-    if (WaSP_encoder_setup.sparse_subsampling < 1) {
+    if (WaSP_setup.sparse_subsampling < 1) {
         printf("\n Sub sampling factor needs to be >= 1\n");
         return false;
     }
+
+    WaSP_setup.stats_file = WaSP_setup.output_directory + "/stats.json";
 
     return true;
 

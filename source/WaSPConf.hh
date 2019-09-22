@@ -49,6 +49,7 @@ struct WaSPsetup {
 
     /*encoder side only*/
     string config_file;
+    string stats_file;
     int32_t sparse_subsampling; 
 
 };
@@ -69,7 +70,7 @@ class WaSPConfig {
 
   WaSPConfig(int argc, char *argv[], const char *type);
   
-  WaSPsetup WaSP_encoder_setup;
+  WaSPsetup WaSP_setup;
   
   
 };

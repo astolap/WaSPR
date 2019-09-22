@@ -90,6 +90,9 @@ void initView(view* view) {
 
   view->cweight_search = false;
 
+  view->real_rate_texture = 0.0;
+  view->real_rate_normpdisp = 0.0;
+
 }
 
 int32_t get_highest_level(
@@ -168,6 +171,7 @@ void setPaths(
         input_dir,
         SAI->c,
         SAI->r);
+
     /*INPUT*/
     sprintf(
         SAI->path_input_pgm,

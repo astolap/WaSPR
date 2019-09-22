@@ -162,6 +162,15 @@ struct view {
 
   std::vector<spfilter> sparse_filters;
 
+  int32_t finalQP;
+  int32_t preset_QP; /*from json configuration, overrides rate control if >=0*/
+
+  double real_rate_texture;
+  double real_rate_normpdisp;
+
+  std::vector<int32_t> QP_range;
+  std::vector<double> bpp_range;
+
 };
 
 void initView(view* view);

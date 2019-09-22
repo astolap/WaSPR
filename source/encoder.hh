@@ -107,6 +107,7 @@ class encoder {
 
   void generate_normalized_disparity();
   void generate_texture();
+  void write_statsfile();
 
  public:
   virtual ~encoder();

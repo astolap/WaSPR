@@ -65,6 +65,54 @@ void encoder::encode() {
 
 }
 
+void encoder::write_statsfile() {
+
+    nlohmann::json conf_out;
+
+    conf_out["type"] = "WaSP";
+
+    vector<nlohmann::json::object_t> views;
+
+    for (int32_t ii = 0; ii < n_views_total; ii++) {
+
+        view *SAI = LF + ii;
+
+        nlohmann::json view_configuration;
+
+        view_configuration["column_index"] = SAI->c;
+        view_configuration["row_index"] = SAI->r;
+        view_configuration["index"] = SAI->i_order;
+        view_configuration["level"] = SAI->level;
+        view_configuration["finalQP"] = SAI->finalQP;
+
+        view_configuration["NNt"] = SAI->NNt;
+        view_configuration["Ms"] = SAI->Ms;
+
+        view_configuration["QP_range"] = SAI->QP_range;
+        view_configuration["bpp_range"] = SAI->bpp_range;
+
+        view_configuration["real_bpp_texture"] = SAI->real_rate_texture;
+        view_configuration["real_bpp_normdisp"] = SAI->real_rate_normpdisp;
+
+        for (int32_t ij = 0; ij < SAI->sparse_filters.size(); ij++) {
+            view_configuration[std::string("sp_qcoeffs_"+std::to_string(ij)).c_str()] = 
+                SAI->sparse_filters.at(ij).quantized_filter_coefficients;
+            view_configuration[std::string("sp_regr_indices_" + std::to_string(ij)).c_str()] =
+                SAI->sparse_filters.at(ij).regressor_indexes;
+        }
+
+        views.push_back(view_configuration);
+
+    }
+
+    conf_out["views"] = views;
+
+    std::ofstream file(setup.stats_file);
+
+    file << std::setw(2) << conf_out << std::endl;
+
+}
+
 void encoder::write_config(string config_json_file_out) {
 
     nlohmann::json conf_out;
@@ -110,6 +158,8 @@ void encoder::write_config(string config_json_file_out) {
         view_configuration["fixed_merging_weight_parameter"] = SAI->stdd;
 
         view_configuration["minimum_inverse_depth"] = SAI->min_inv_d;
+
+
 
         view_configuration["number_of_texture_references"] = SAI->n_references;
         view_configuration["number_of_inverse_depth_references"] =
@@ -203,6 +253,8 @@ void encoder::load_config_json(string config_json_file) {
             view_configuration["number_of_inverse_depth_references"].get<int32_t>();
 
         SAI->level = view_configuration["level"].get<int32_t>();
+
+        SAI->preset_QP = view_configuration["QP"].get<int32_t>();
 
         if (abs(SAI->x) > 0.0001) {
             SAI->has_x_displacement = true;
@@ -504,6 +556,14 @@ void encoder::generate_normalized_disparity() {
                     /* ------------------------------
                     INVERSE DEPTH DECODING STARTS
                     ------------------------------*/
+
+                    double bytesndisp = aux_GetFileSize(SAI->jp2_residual_depth_path_jp2);
+                    double bppndisp = 
+                        bytesndisp * 8.0 
+                        / static_cast<double>(SAI->nr) 
+                        / static_cast<double>(SAI->nc);
+
+                    SAI->real_rate_normpdisp = bppndisp;
 
                     printf("Decoding normalized disparity for view %03d_%03d\n", SAI->c, SAI->r);
 
@@ -996,60 +1056,67 @@ void encoder::generate_texture() {
             ------------------------------*/
 
             /* encode HM, YUV444 -> .hevc (any YUV format) */
-            std::vector<double> bpps;
-            std::vector<int32_t> QPs;
 
-            int32_t QPstep = 1;
+            int32_t QPfinal = SAI0->preset_QP;
 
-            bool QPsearch_interrupt = false;
+            if (SAI0->preset_QP < 0) {
 
-            for (int32_t QP = 0; QP < 51; QP += QPstep) {
+                std::vector<double> bpps;
+                std::vector<int32_t> QPs;
 
-                //for (int32_t QP = 25; QP = 25; QP=25 ) {
-                long bytes_hevc = encodeHM(
-                    SAI0->encoder_raw_output_444,
-                    SAI0->hevc_texture,
-                    hlevel>1 ? YUVTYPE : YUVTYPE_1LEVEL,
-                    QP,
-                    YUV_444_SEQ.size(),
-                    nc1,
-                    nr1,
-                    SAI0->decoder_raw_output_YUV); /*transpose for nr,nc*/
+                int32_t QPstep = 1;
 
-                double bpphevc =
-                    double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
+                bool QPsearch_interrupt = false;
 
-                printf("\nQP=%d\tbpp=\t%f\n", QP, bpphevc);
+                for (int32_t QP = 0; QP < 51; QP += QPstep) {
 
-                bpps.push_back(bpphevc);
-                QPs.push_back(QP);
+                    //for (int32_t QP = 25; QP = 25; QP=25 ) {
+                    long bytes_hevc = encodeHM(
+                        SAI0->encoder_raw_output_444,
+                        SAI0->hevc_texture,
+                        hlevel > 1 ? YUVTYPE : YUVTYPE_1LEVEL,
+                        QP,
+                        YUV_444_SEQ.size(),
+                        nc1,
+                        nr1,
+                        SAI0->decoder_raw_output_YUV); /*transpose for nr,nc*/
 
-                if (*(bpps.end() - 1) < SAI0->residual_rate_color) {
-                    break;
+                    double bpphevc =
+                        double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
+
+                    printf("\nQP=%d\tbpp=\t%f\n", QP, bpphevc);
+
+                    bpps.push_back(bpphevc);
+                    QPs.push_back(QP);
+
+                    if (*(bpps.end() - 1) < SAI0->residual_rate_color) {
+                        break;
+                    }
+
                 }
 
-            }
+                SAI0->bpp_range = std::vector<double>(bpps);
+                SAI0->QP_range = std::vector<int32_t>(QPs);
 
-            int32_t QPfinal = 0;
+                /*use first one*/
+                if (bpps.size() == 1) {
+                    QPfinal = QPs.at(0);
+                }
+                /*use last one*/
+                else if (*(bpps.end() - 1) > SAI0->residual_rate_color) {
+                    QPfinal = *(QPs.end() - 1);
+                }
+                /*interpolate*/
+                else {
 
-            /*use first one*/
-            if (bpps.size() == 1) {
-                QPfinal = QPs.at(0);
-            }
-            /*use last one*/
-            else if (*(bpps.end() - 1) > SAI0->residual_rate_color) {
-                QPfinal = *(QPs.end() - 1);
-            }
-            /*interpolate*/
-            else {
+                    double dx = *(bpps.end() - 1) - *(bpps.end() - 2);
+                    double dy = QPstep;// *(QPs.end() - 1) - *(QPs.end() - 2);
 
-                double dx = *(bpps.end() - 1) - *(bpps.end() - 2);
-                double dy = QPstep;// *(QPs.end() - 1) - *(QPs.end() - 2);
+                    double diffx = SAI0->residual_rate_color - *(bpps.end() - 2);
 
-                double diffx = SAI0->residual_rate_color - *(bpps.end() - 2);
+                    QPfinal = round(double(*(QPs.end() - 2) + diffx*(dy / dx)));
 
-                QPfinal = round(double(*(QPs.end() - 2) + diffx*(dy / dx)));
-
+                }
             }
 
             long bytes_hevc = encodeHM(
@@ -1065,7 +1132,22 @@ void encoder::generate_texture() {
             double bpphevc =
                 double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
 
+
+
             printf("\nFinal QP=%d\tbpp=\t%f\n", QPfinal, bpphevc);
+
+            for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+
+                view *SAI = LF + hevc_i_order.at(ii);
+
+                SAI->finalQP = QPfinal;
+
+                SAI->real_rate_texture = bpphevc;
+
+                SAI->QP_range = SAI0->QP_range;
+                SAI->bpp_range = SAI0->bpp_range;
+
+            }
 
             /* ------------------------------
             TEXTURE RESIDUAL ENCODING ENDS
@@ -1210,6 +1292,10 @@ void encoder::generate_texture() {
 }
 
 void encoder::write_bitstream() {
+
+    printf("Writing encoder statistics file\n");
+
+    write_statsfile();
 
     printf("Writing header information to codestream\n");
 

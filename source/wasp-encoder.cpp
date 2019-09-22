@@ -29,9 +29,9 @@
 
 int main(int argc, char* argv[]) {
 
-    WaSPConfig encoder_settings(argc, argv, "encoder");
+    WaSPConfig settings(argc, argv, "encoder");
 
-    encoder wasp_encoder(encoder_settings.WaSP_encoder_setup);
+    encoder wasp_encoder(settings.WaSP_setup);
 
     wasp_encoder.encode();
 
