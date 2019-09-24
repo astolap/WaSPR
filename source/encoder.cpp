@@ -1102,9 +1102,7 @@ void encoder::generate_texture() {
                 std::vector<double> bpps;
                 std::vector<int32_t> QPs;
 
-                int32_t QPstep = 1;
-
-                bool QPsearch_interrupt = false;
+                int32_t QPstep = 15;
 
                 for (int32_t QP = 0; QP < 51; QP += QPstep) {
 
