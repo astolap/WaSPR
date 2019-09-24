@@ -137,5 +137,10 @@ void WaSP_predict_depth(view* SAI, view *LF) {
             DispTargs_0_N);
 
     }
-
+    else 
+    {
+        delete[](SAI->depth);
+        /*no prediction, no input normalized disparity*/
+        SAI->depth = new uint16_t[SAI->nr*SAI->nc]();
+    }
 }

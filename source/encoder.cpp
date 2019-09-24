@@ -496,7 +496,7 @@ void encoder::generate_normalized_disparity() {
 
             SAI->depth = new uint16_t[SAI->nr * SAI->nc]();
 
-            if (hlevel == 1) { /*intra coding of inverse depth*/
+            if (hlevel == 1 && SAI->residual_rate_depth > 0) { /*intra coding of inverse depth*/
 
                 bool depth_file_exist = false;
 
@@ -512,7 +512,7 @@ void encoder::generate_normalized_disparity() {
                     ncomp1,
                     SAI->depth);
 
-                if (SAI->depth_file_exist && SAI->residual_rate_depth > 0) {
+                if (SAI->depth_file_exist) {
 
                     /* ------------------------------
                     INVERSE DEPTH ENCODING STARTS
@@ -610,8 +610,6 @@ void encoder::generate_normalized_disparity() {
                     //    SAI->depth);
 
                 }
-
-
             }
             else { /*prediction only*/
 
@@ -644,7 +642,6 @@ void encoder::generate_normalized_disparity() {
                 SAI->color = nullptr;
 
             }
-
 
             aux_write16PGMPPM(
                 SAI->path_out_pgm,
