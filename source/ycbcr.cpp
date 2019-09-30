@@ -29,6 +29,7 @@
 
 #include <cstring>
 #include <cstdint>
+#include <cmath>
 
 using std::int32_t;
 using std::uint32_t;
@@ -87,9 +88,9 @@ void RGB2YCbCr(
   double *rgbD = new double[nr * nc * 3]();
   double *ycbcrD = new double[nr * nc * 3]();
 
-  double nd = (double) (1 << (N - 8));  // pow(2, (double)N - 8);
+  double nd = (double) (1 << (N - 8));
 
-  double clipval = (double) (1 << N) - 1;  // pow(2, N) - 1;
+  double clipval = (double) (1 << N) - 1;
 
   for (int32_t ii = 0; ii < nr * nc * 3; ii++) {
 
@@ -105,8 +106,6 @@ void RGB2YCbCr(
           + *(rgbD + ii + 1 * nr * nc) * M[icomp + 3]
           + *(rgbD + ii + 2 * nr * nc) * M[icomp + 6];
 
-      //printf("rgb\t%f\tycbcr\t%f\n", *(rgbD + ii + icomp*nr*nc), *(ycbcrD + ii + icomp*nr*nc));
-
       if (icomp < 1) {
         *(ycbcrD + ii + icomp * nr * nc) = (219
             * (*(ycbcrD + ii + icomp * nr * nc)) + 16) * nd;
@@ -115,8 +114,10 @@ void RGB2YCbCr(
             * (*(ycbcrD + ii + icomp * nr * nc)) + 128) * nd;
       }
 
-      *(ycbcr + ii + icomp * nr * nc) = (uint16_t) *(ycbcrD + ii
-          + icomp * nr * nc);
+      double rd = floor(*(ycbcrD + ii + icomp * nr * nc) + 0.5);
+
+      *(ycbcr + ii + icomp * nr * nc) =
+          static_cast<uint16_t>(clip(rd,0.0,double(clipval)));
     }
 
   }
@@ -172,8 +173,11 @@ void YCbCr2RGB(
           + *(ycbcrD + ii + 1 * nr * nc) * M[icomp + 3]
           + *(ycbcrD + ii + 2 * nr * nc) * M[icomp + 6];
 
-      *(rgb + ii + icomp * nr * nc) = (uint16_t) clip(
-          (*(rgbD + ii + icomp * nr * nc) * clipval), 0.0, (double) clipval);
+      double rd = *(rgbD + ii + icomp * nr * nc) * clipval;
+      rd = floor(rd + 0.5);
+
+      *(rgb + ii + icomp * nr * nc) = 
+          static_cast<uint16_t>( clip(rd, 0.0, (double) clipval));
     }
 
   }

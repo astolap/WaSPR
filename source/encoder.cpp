@@ -398,7 +398,7 @@ void encoder::merge_texture_views(
             10,
             SAI->colorspace);
 
-        for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+        for (int32_t icomp = 0; icomp < SAI->nc_merge; icomp++) {
             getViewMergingLSWeights_icomp(
                 SAI,
                 warped_texture_views,
@@ -408,7 +408,7 @@ void encoder::merge_texture_views(
 
         delete[](original_color_view);
 
-        for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+        for (int32_t icomp = 0; icomp < SAI->nc_merge; icomp++) {
             mergeWarped_N_icomp(
                 warped_texture_views,
                 SAI,
@@ -416,7 +416,7 @@ void encoder::merge_texture_views(
         }
 
         /* hole filling for texture*/
-        for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+        for (int32_t icomp = 0; icomp < SAI->nc_merge; icomp++) {
             uint32_t nholes = holefilling(
                 SAI->color + icomp*SAI->nr*SAI->nc,
                 SAI->nr,
@@ -431,7 +431,7 @@ void encoder::merge_texture_views(
     if (SAI->mmode == 1) {
 
         /* we don't use LS weights but something derived on geometric distance in view array*/
-        for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+        for (int32_t icomp = 0; icomp < SAI->nc_merge; icomp++) {
             getGeomWeight_icomp(
                 SAI,
                 LF,
@@ -439,7 +439,7 @@ void encoder::merge_texture_views(
         }
 
         /* merge color with prediction */
-        for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+        for (int32_t icomp = 0; icomp < SAI->nc_merge; icomp++) {
             mergeWarped_N_icomp(
                 warped_texture_views,
                 SAI,
@@ -447,7 +447,7 @@ void encoder::merge_texture_views(
         }
 
         /* hole filling for texture*/
-        for (int32_t icomp = 0; icomp < 3; icomp++) {
+        for (int32_t icomp = 0; icomp < nc_merge; icomp++) {
             uint32_t nholes = holefilling(
                 SAI->color + icomp*SAI->nr*SAI->nc,
                 SAI->nr,
@@ -461,10 +461,10 @@ void encoder::merge_texture_views(
     if (SAI->mmode == 2) {
 
         /*merge with median operator*/
-        mergeMedian_N(warped_texture_views, DispTargs, SAI, 3);
+        mergeMedian_N(warped_texture_views, DispTargs, SAI, nc_merge);
 
         /* hole filling for texture*/
-        for (int32_t icomp = 0; icomp < 3; icomp++) {
+        for (int32_t icomp = 0; icomp < nc_merge; icomp++) {
             uint32_t nholes = holefilling(
                 SAI->color + icomp*SAI->nr*SAI->nc,
                 SAI->nr,
@@ -776,7 +776,7 @@ void encoder::generate_texture() {
 
                     }
 
-                    for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+                    for (int32_t icomp = 0; icomp < SAI->nc_sparse; icomp++) {
 
                         std::vector<std::vector<uint16_t>> padded_regressors;
 
@@ -843,7 +843,7 @@ void encoder::generate_texture() {
                     uint16_t *sp_filtered_image =
                         new uint16_t[SAI->nr*SAI->nc*SAI->ncomp]();
 
-                    for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+                    for (int32_t icomp = 0; icomp < nc_sparse; icomp++) {
 
                         quantize_and_reorder_spfilter(
                             SAI->sparse_filters.at(icomp));
@@ -930,7 +930,7 @@ void encoder::generate_texture() {
                         SAI->color,
                         SAI->nr,
                         SAI->nc,
-                        SAI->ncomp,
+                        nc_sparse,
                         (1 << 10) - 1);
 
                     double psnr_with_sparse = PSNR(
@@ -938,7 +938,7 @@ void encoder::generate_texture() {
                         sp_filtered_image,
                         SAI->nr,
                         SAI->nc,
-                        SAI->ncomp,
+                        nc_sparse,
                         (1 << bpc) - 1);
 
                     if (psnr_with_sparse > psnr_without_sparse) {
