@@ -203,6 +203,11 @@ void encoder::load_config_json(string config_json_file) {
     nr = conf["image_height"].get<int32_t>();
     nc = conf["image_width"].get<int32_t>();
 
+    nc_sparse = conf["nc_sparse"].get<int32_t>();
+    nc_merge = conf["nc_merge"].get<int32_t>();
+    nc_color_ref = conf["nc_color_ref"].get<int32_t>();
+    SP_B = conf["SP_B"].get<int32_t>();
+
     vector<nlohmann::json::object_t> conf_views =
         conf["views"].get<vector<nlohmann::json::object_t>>();
 
@@ -223,6 +228,11 @@ void encoder::load_config_json(string config_json_file) {
         SAI->i_order = ii;
 
         SAI->ncomp = 3;
+
+        SAI->nc_sparse = nc_sparse;
+        SAI->nc_merge = nc_merge;
+
+        SAI->SP_B = SP_B;
 
         SAI->r = view_configuration["row_index"].get<int32_t>();
         SAI->c = view_configuration["column_index"].get<int32_t>();
@@ -850,17 +860,19 @@ void encoder::generate_texture() {
                                 SAI->nc,
                                 SAI->NNt));
 
-                        for (int ikr = 0; ikr < SAI->n_references; ikr++) {
+                        if (SP_B) {
+                            for (int ikr = 0; ikr < SAI->n_references; ikr++) {
 
-                            view *ref_view = LF + SAI->references[ikr];
+                                view *ref_view = LF + SAI->references[ikr];
 
-                            padded_regressors.push_back(
-                                padArrayUint16_t_vec(
-                                    ref_view->color + SAI->nr*SAI->nc*icomp,
-                                    SAI->nr,
-                                    SAI->nc,
-                                    SAI->NNt));
+                                padded_regressors.push_back(
+                                    padArrayUint16_t_vec(
+                                        ref_view->color + SAI->nr*SAI->nc*icomp,
+                                        SAI->nr,
+                                        SAI->nc,
+                                        SAI->NNt));
 
+                            }
                         }
 
                         std::vector<double> filtered_icomp =
@@ -1099,7 +1111,7 @@ void encoder::generate_texture() {
                 std::vector<double> bpps;
                 std::vector<int32_t> QPs;
 
-                int32_t QPstep = 15;
+                int32_t QPstep = 3;
 
                 for (int32_t QP = 0; QP < 51; QP += QPstep) {
 
@@ -1107,7 +1119,7 @@ void encoder::generate_texture() {
                     long bytes_hevc = encodeHM(
                         SAI0->encoder_raw_output_444,
                         SAI0->hevc_texture,
-                        hlevel > 1 ? YUVTYPE : YUVTYPE_1LEVEL,
+                        hlevel > 1 ? YUVTYPE: (nc_color_ref>1 ? YUV420 : YUV400),
                         QP,
                         YUV_444_SEQ.size(),
                         nc1,
@@ -1155,7 +1167,7 @@ void encoder::generate_texture() {
             long bytes_hevc = encodeHM(
                 SAI0->encoder_raw_output_444,
                 SAI0->hevc_texture,
-                hlevel>1 ? YUVTYPE : YUVTYPE_1LEVEL,
+                hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV420 : YUV400),
                 QPfinal,
                 YUV_444_SEQ.size(),
                 nc1,
@@ -1185,7 +1197,6 @@ void encoder::generate_texture() {
             /* ------------------------------
             TEXTURE RESIDUAL ENCODING ENDS
             ------------------------------*/
-
 
 
             /* ------------------------------
@@ -1305,13 +1316,16 @@ void encoder::generate_texture() {
                 SAI->ncomp,
                 SAI->color);
 
-            /*writing .ppm in output colorspace*/
+            /*writing .ppm in output colorspace,
+            If we only encode luminance, we have luminance as the first
+            component of the .ppm file !
+            */
             write_output_ppm(
                 SAI->color,
                 SAI->path_out_ppm,
                 SAI->nr,
                 SAI->nc,
-                SAI->ncomp,
+                nc_color_ref,
                 bpc,
                 SAI->colorspace);
 
@@ -1337,6 +1351,7 @@ void encoder::write_bitstream() {
     if (colorspace_LF.compare("RGB") == 0) {
         colorspace_enumerator = 0;
     }
+
     if (colorspace_LF.compare("YCbCr") == 0) {
         colorspace_enumerator = 1;
     }
@@ -1382,6 +1397,30 @@ void encoder::write_bitstream() {
     n_bytes_prediction += (int32_t)fwrite(
         &maxh,
         sizeof(int32_t),
+        1,
+        output_LF_file) * sizeof(int32_t);
+
+    n_bytes_prediction += (int32_t)fwrite(
+        &nc_sparse,
+        sizeof(uint8_t),
+        1,
+        output_LF_file) * sizeof(int32_t);
+
+    n_bytes_prediction += (int32_t)fwrite(
+        &nc_merge,
+        sizeof(uint8_t),
+        1,
+        output_LF_file) * sizeof(int32_t);
+
+    n_bytes_prediction += (int32_t)fwrite(
+        &SP_B,
+        sizeof(uint8_t),
+        1,
+        output_LF_file) * sizeof(int32_t);
+
+    n_bytes_prediction += (int32_t)fwrite(
+        &nc_color_ref,
+        sizeof(uint8_t),
         1,
         output_LF_file) * sizeof(int32_t);
 

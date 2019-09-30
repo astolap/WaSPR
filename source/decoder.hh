@@ -67,6 +67,10 @@ private:
     FILE* input_LF = nullptr;
     std::vector<std::vector<uint8_t>> JP2_dict;
 
+    uint8_t nc_sparse, nc_merge, nc_color_ref;
+
+    uint8_t SP_B;
+
     void dealloc();
 
 protected:

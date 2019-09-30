@@ -321,14 +321,16 @@ uint16_t *read_input_ppm(
     /* we can encode/decode in any colorspace.
     currently we have two options: RGB and YCbCr*/
 
-    if (colorspace.compare("RGB")==0) {
+    if (colorspace.compare("RGB")==0)
+    {
         memcpy(
             texture_in_encoder_colorspace,
             texture_in_input_colorspace,
             sizeof(uint16_t)*nr*nc*ncomp);
     }
 
-    if (colorspace.compare("YCbCr")==0) {
+    if (colorspace.compare("YCbCr")==0)
+    {
         RGB2YCbCr(
             texture_in_input_colorspace,
             texture_in_encoder_colorspace,
@@ -353,19 +355,19 @@ void write_output_ppm(
 
     /* transform back to original input colorspace */
     uint16_t *texture_view_in_output_colorspace =
-        new uint16_t[nr*nc*ncomp]();
+        new uint16_t[nr*nc*3]();
 
     /* we can encode/decode in any colorspace.
     currently we have two options: RGB and YCbCr*/
 
-    if (colorspace.compare("RGB")==0) {
+    if (colorspace.compare("RGB")==0 || ncomp < 2) {
         memcpy(
             texture_view_in_output_colorspace,
             texture_view_in_encoder_colorspace,
-            sizeof(uint16_t)*nr*nc*ncomp);
+            sizeof(uint16_t)*nr*nc*3);
     }
 
-    if (colorspace.compare("YCbCr")==0) {
+    else if (colorspace.compare("YCbCr")==0) {
         YCbCr2RGB(
             texture_view_in_encoder_colorspace,
             texture_view_in_output_colorspace,
@@ -378,7 +380,7 @@ void write_output_ppm(
         output_ppm_path,
         nc,
         nr,
-        ncomp,
+        3,
         texture_view_in_output_colorspace);
 
     delete[](texture_view_in_output_colorspace);

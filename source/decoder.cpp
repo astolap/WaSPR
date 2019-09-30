@@ -116,6 +116,30 @@ void decoder::decode_header() {
         1,
         input_LF) * sizeof(uint8_t);
 
+    n_bytes_prediction += (int32_t)fread(
+        &nc_sparse,
+        sizeof(uint8_t),
+        1,
+        input_LF) * sizeof(int32_t);
+
+    n_bytes_prediction += (int32_t)fread(
+        &nc_merge,
+        sizeof(uint8_t),
+        1,
+        input_LF) * sizeof(int32_t);
+
+    n_bytes_prediction += (int32_t)fread(
+        &SP_B,
+        sizeof(uint8_t),
+        1,
+        input_LF) * sizeof(int32_t);
+
+    n_bytes_prediction += (int32_t)fread(
+        &nc_color_ref,
+        sizeof(uint8_t),
+        1,
+        input_LF) * sizeof(int32_t);
+
 }
 
 void decoder::forward_warp_texture_references(
@@ -337,29 +361,31 @@ void decoder::predict_texture_view(view* SAI) {
                         SAI->nc,
                         SAI->NNt));
 
-                for (int ikr = 0; ikr < SAI->n_references; ikr++) {
+                if (SP_B) {
+                    for (int ikr = 0; ikr < SAI->n_references; ikr++) {
 
-                    view *ref_view = LF + SAI->references[ikr];
+                        view *ref_view = LF + SAI->references[ikr];
 
-                    int32_t tmp_w, tmp_r, tmp_ncomp;
+                        int32_t tmp_w, tmp_r, tmp_ncomp;
 
-                    aux_read16PGMPPM(
-                        ref_view->path_internal_colorspace_out_ppm,
-                        tmp_w,
-                        tmp_r,
-                        tmp_ncomp,
-                        ref_view->color);
+                        aux_read16PGMPPM(
+                            ref_view->path_internal_colorspace_out_ppm,
+                            tmp_w,
+                            tmp_r,
+                            tmp_ncomp,
+                            ref_view->color);
 
-                    padded_regressors.push_back(
-                        padArrayUint16_t_vec(
-                            ref_view->color + SAI->nr*SAI->nc*icomp,
-                            SAI->nr,
-                            SAI->nc,
-                            SAI->NNt));
+                        padded_regressors.push_back(
+                            padArrayUint16_t_vec(
+                                ref_view->color + SAI->nr*SAI->nc*icomp,
+                                SAI->nr,
+                                SAI->nc,
+                                SAI->NNt));
 
-                    delete[](ref_view->color);
-                    ref_view->color = nullptr;
+                        delete[](ref_view->color);
+                        ref_view->color = nullptr;
 
+                    }
                 }
 
                 std::vector<double> filtered_icomp =
@@ -425,8 +451,10 @@ void decoder::decode_views() {
 
         SAI->nr = number_of_rows;
         SAI->nc = number_of_columns;
-
         SAI->colorspace = colorspace_LF;
+        SAI->SP_B = SP_B;
+        SAI->nc_merge = nc_merge;
+        SAI->nc_sparse = nc_sparse;
 
         if (minimum_depth > 0) {
             SAI->min_inv_d = static_cast<int32_t>(minimum_depth);
@@ -520,7 +548,7 @@ void decoder::decode_views() {
 
                 std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
                     SAI0->decoder_raw_output_YUV,
-                    hlevel>1 ? YUVTYPE : YUVTYPE_1LEVEL,
+                    hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV420 : YUV400),
                     nr1,
                     nc1,
                     hevc_i_order.size());
@@ -676,7 +704,6 @@ void decoder::decode_views() {
         }
 
         /*internal colorspace version*/
-
         aux_write16PGMPPM(
             SAI->path_internal_colorspace_out_ppm,
             SAI->nc,
@@ -684,27 +711,29 @@ void decoder::decode_views() {
             SAI->ncomp,
             SAI->color);
 
-        /*colorspace transformation back to input*/
-
+        /*colorspace transformation back to input and,
+        writing .ppm in output colorspace,
+        If we only encode luminance, we have luminance as the first
+        component of the .ppm file !
+        */
         write_output_ppm(
             SAI->color,
             SAI->path_out_ppm,
             SAI->nr,
             SAI->nc,
-            SAI->ncomp,
+            nc_color_ref,
             10,
             SAI->colorspace);
 
         /*write inverse depth .pgm*/
-        if (SAI->level < maxh) {
-
-            aux_write16PGMPPM(
-                SAI->path_out_pgm,
-                SAI->nc,
-                SAI->nr,
-                1,
-                SAI->depth);
-        }
+        //if (SAI->level < maxh) {
+        aux_write16PGMPPM(
+            SAI->path_out_pgm,
+            SAI->nc,
+            SAI->nr,
+            1,
+            SAI->depth);
+        //}
 
         if (SAI->color != nullptr) {
             delete[](SAI->color);

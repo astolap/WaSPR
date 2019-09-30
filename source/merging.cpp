@@ -74,20 +74,19 @@ void clean_warping_arrays(
 void setBMask(view *view0) {
   /* sets the binary mask used to derive view availability in each of the MMM classes,
    size of the binary mask is [MMM x n_references] */
-  int32_t MMM = 1 << view0->n_references;  // pow(2, view0->n_references);
+  int32_t MMM = 1 << view0->n_references;
   bool *bmask = new bool[MMM * view0->n_references]();
-  (view0)->bmask = bmask;
   for (int32_t ij = 0; ij < MMM; ij++) {
     int32_t uu = ij;
     for (int32_t ik = view0->n_references - 1; ik >= 0; ik--) {
-      //if (floor(uu / pow(2, ik)) > 0)
       if (floor(uu / (1 << ik)) > 0) {
-        //uu = uu - pow(2, ik);
         uu = uu - (1 << ik);
         bmask[ij + ik * MMM] = 1;
       }
     }
   }
+
+  view0->bmask = bmask;
 }
 
 void initSegVp(view *view0, float **DispTargs) {
@@ -98,9 +97,7 @@ void initSegVp(view *view0, float **DispTargs) {
 
   uint16_t *seg_vp = new uint16_t[nr * nc]();
 
-  (view0)->seg_vp = seg_vp;
-
-  int32_t MMM = 1 << view0->n_references;  // pow(2, (view0)->n_references);
+  int32_t MMM = 1 << view0->n_references;
 
   int32_t *number_of_pixels_per_region = new int32_t[MMM]();
 
@@ -111,7 +108,7 @@ void initSegVp(view *view0, float **DispTargs) {
     for (int32_t ik = 0; ik < n_references; ik++) {
       float *pf = DispTargs[ik];
       if (*(pf + ii) > INIT_DISPARITY_VALUE)
-        ci = ci + (uint16_t) (1 << ik);  // pow(2, ik);
+        ci = ci + (uint16_t) (1 << ik);
     }
 
     seg_vp[ii] = ci;
@@ -121,25 +118,23 @@ void initSegVp(view *view0, float **DispTargs) {
   }
 
   view0->number_of_pixels_per_region = number_of_pixels_per_region;
+  view0->seg_vp = seg_vp;
 }
 
 void initViewW(view *view0, float **DispTargs) {
 
     /* sets some of the parameters for a view in the light view structure */
 
-    int32_t MMM = (1 << view0->n_references);
+    view0->NB = (1 << view0->n_references) * view0->n_references;
 
-    (view0)->NB = MMM * view0->n_references;
-
-    if ((view0)->merge_weights == nullptr) {
-        int16_t *merge_weights = 
-            new int16_t[view0->ncomp*(view0->NB / 2)]();
-        (view0)->merge_weights = merge_weights;
+    if (view0->merge_weights == nullptr) 
+    {
+        view0->merge_weights = new int16_t[view0->ncomp*(view0->NB / 2)]();
     }
 
-    double *merge_weights_double = new double[MMM*view0->n_references]();
+    /*stores merging weights for a single component*/
 
-    (view0)->merge_weights_double = merge_weights_double;
+    view0->merge_weights_double = new double[view0->NB]();
 
     setBMask(view0);
 
@@ -380,8 +375,6 @@ void getViewMergingLSWeights_icomp(
         int32_t *PredRegr0 = new int32_t[M]();
         double *PredTheta0 = new double[M]();
 
-        //int32_t Mtrue = FastOLS(ATA, ATYd, YdTYd, PredRegr0, PredTheta0, M, M, M);
-
         int32_t Mtrue = FastOLS_new(
             &AA,
             &Yd,
@@ -447,8 +440,6 @@ void getViewMergingLSWeights_icomp(
 
     delete[](original_view_in_classes);
     delete[](reference_view_pixels_in_classes);
-    //delete[](seg_vp);
-    //delete[](number_of_pixels_per_region);
 
 }
 
@@ -489,7 +480,7 @@ void getGeomWeight_icomp(
             if (bmask[ij + ik * MMM]) {
                 LScoeffs[in] = (int16_t)floor(
                     thetas[ij + MMM * ik] * (int16_t)(1 << BIT_DEPTH_MERGE)
-                    + 0.5);  // pow(2, BIT_DEPTH_MERGE) + 0.5);
+                    + 0.5);
                 in++;
             }
         }

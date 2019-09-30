@@ -75,6 +75,10 @@ class encoder {
 
   std::string colorspace_LF;
 
+  uint8_t nc_sparse, nc_merge, nc_color_ref;
+  
+  uint8_t SP_B;
+
   /* to get efficiency from multiple JP2 files, we remove parts of the files
    which are repetitive over all files. For this we have a minimalistic
    dictionary method. */

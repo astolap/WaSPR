@@ -171,6 +171,10 @@ struct view {
   std::vector<int32_t> QP_range;
   std::vector<double> bpp_range;
 
+  uint8_t nc_sparse;
+  uint8_t nc_merge;
+  uint8_t SP_B;
+
 };
 
 void initView(view* view);

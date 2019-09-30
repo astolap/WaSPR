@@ -89,10 +89,13 @@ void viewHeaderToCodestream(
     if (SAI->has_color_references) {
         if (SAI->mmode == 0) {
             /* use LS merging weights */
+
+            int32_t N_LS_R = SAI->nc_merge*((MMM*SAI->n_references) / 2);
+
             n_bytes_prediction += (int32_t)fwrite(
                 SAI->merge_weights,
                 sizeof(int16_t),
-                N_LS,
+                N_LS_R,
                 output_LF_file)
                 * sizeof(int16_t);
         }
@@ -123,7 +126,7 @@ void viewHeaderToCodestream(
             1,
             output_LF_file) * sizeof(unsigned char);
 
-        for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+        for (int32_t icomp = 0; icomp < SAI->nc_sparse; icomp++) {
             n_bytes_prediction += (int32_t)fwrite(
                 &SAI->sparse_filters.at(icomp).quantized_filter_coefficients[0],
                 sizeof(int16_t),
@@ -132,12 +135,15 @@ void viewHeaderToCodestream(
                 * sizeof(int16_t);
         }
 
-        int32_t Nsp = SAI->sparse_filters.at(0).MT;// (SAI->NNt * 2 + 1)* (SAI->NNt * 2 + 1) + 1;
+        int32_t Nsp = SAI->SP_B>0 ?
+            (SAI->n_references + 1)*(SAI->NNt * 2 + 1) * (SAI->NNt * 2 + 1) + 1 :
+            (SAI->NNt * 2 + 1) * (SAI->NNt * 2 + 1) + 1;
+
         int32_t sp_mask_nbytes = (Nsp % 8) ? Nsp / 8 + 1 : Nsp / 8;
 
-        uint8_t *sparsemask = new uint8_t[sp_mask_nbytes*SAI->ncomp]();
+        uint8_t *sparsemask = new uint8_t[sp_mask_nbytes*3]();
 
-        for (int32_t icomp = 0; icomp < SAI->ncomp; icomp++) {
+        for (int32_t icomp = 0; icomp < SAI->nc_sparse; icomp++) {
 
             for (int32_t ij = 0; ij < SAI->Ms; ij++) {
 
@@ -157,7 +163,7 @@ void viewHeaderToCodestream(
         n_bytes_prediction += (int32_t)fwrite(
             sparsemask,
             sizeof(uint8_t),
-            sp_mask_nbytes*SAI->ncomp,
+            sp_mask_nbytes*SAI->nc_sparse,
             output_LF_file)
             * sizeof(uint8_t);
 
@@ -233,16 +239,21 @@ void codestreamToViewHeader(
     SAI->NB = (1 << SAI->n_references) * SAI->n_references;
 
     int32_t MMM = (1 << SAI->n_references);
-    int32_t N_LS = SAI->ncomp*((MMM*SAI->n_references) / 2);
 
     if (SAI->has_color_references) {
         if (SAI->mmode == 0) {
+
+            int32_t N_LS = SAI->ncomp*((MMM*SAI->n_references) / 2);
+
             SAI->merge_weights = new int16_t[N_LS]();
             /* use LS merging weights */
+
+            int32_t N_LS_R = SAI->nc_merge*((MMM*SAI->n_references) / 2);
+
             n_bytes_prediction += (int32_t)fread(
                 SAI->merge_weights,
                 sizeof(int16_t),
-                N_LS,
+                N_LS_R,
                 input_LF)
                 * sizeof(int16_t);
         }
@@ -286,33 +297,38 @@ void codestreamToViewHeader(
             SAI->sparse_filters.at(icomp).Ms = SAI->Ms;
             SAI->sparse_filters.at(icomp).NNt = SAI->NNt;
 
-            SAI->sparse_filters.at(icomp).MT =
-                (SAI->n_references + 1)*(SAI->NNt * 2 + 1) * (SAI->NNt * 2 + 1) + 1;
+            SAI->sparse_filters.at(icomp).MT = SAI->SP_B>0 ? 
+                (SAI->n_references + 1)*(SAI->NNt * 2 + 1) * (SAI->NNt * 2 + 1) + 1 :
+                (SAI->NNt * 2 + 1) * (SAI->NNt * 2 + 1) + 1;
 
             SAI->sparse_filters.at(icomp).quantized_filter_coefficients.clear();
 
             for (int32_t ii = 0; ii < SAI->Ms; ii++) {
                 SAI->sparse_filters.at(icomp).quantized_filter_coefficients.push_back(0);
             }
+        }
 
+        for (int32_t icomp = 0; icomp < SAI->nc_sparse; icomp++)
+        {
             n_bytes_prediction += (int32_t)fread(
                 &SAI->sparse_filters.at(icomp).quantized_filter_coefficients[0],
                 sizeof(int16_t),
                 SAI->Ms,
                 input_LF)
-                * sizeof(int16_t);
+            * sizeof(int16_t);
+
         }
 
 
         int32_t Nsp = SAI->sparse_filters.at(0).MT;// (SAI->NNt * 2 + 1)* (SAI->NNt * 2 + 1) + 1;
         int32_t sp_mask_nbytes = (Nsp % 8) ? Nsp / 8 + 1 : Nsp / 8;
 
-        uint8_t *sparsemask = new uint8_t[sp_mask_nbytes*SAI->ncomp]();
+        uint8_t *sparsemask = new uint8_t[sp_mask_nbytes*3]();
 
         n_bytes_prediction += (int32_t)fread(
             sparsemask,
             sizeof(uint8_t),
-            sp_mask_nbytes*SAI->ncomp,
+            sp_mask_nbytes*SAI->nc_sparse,
             input_LF)
             * sizeof(uint8_t);
 
@@ -323,6 +339,9 @@ void codestreamToViewHeader(
             for (int32_t ii = 0; ii < Nsp; ii++) {
                 SAI->sparse_filters.at(icomp).regressor_indexes.push_back(0);
             }
+        }
+
+        for (int32_t icomp = 0; icomp < SAI->nc_sparse; icomp++) {
 
             uint32_t ik = 0;
 
