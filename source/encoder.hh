@@ -75,7 +75,7 @@ class encoder {
 
   std::string colorspace_LF;
 
-  uint8_t nc_sparse, nc_merge, nc_color_ref;
+  uint8_t nc_sparse, nc_merge, nc_color_ref, n_seg_iterations;
   
   uint8_t SP_B;
 

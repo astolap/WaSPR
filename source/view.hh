@@ -162,6 +162,8 @@ struct view {
 
   std::vector<spfilter> sparse_filters;
 
+  uint16_t number_of_sp_filters;
+
   int32_t finalQP;
   int32_t preset_QP; /*from json configuration, overrides rate control if >=0*/
 

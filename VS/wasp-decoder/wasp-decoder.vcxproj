@@ -49,6 +49,7 @@
     <ClCompile Include="..\..\source\predictdepth.cpp" />
     <ClCompile Include="..\..\source\psnr.cpp" />
     <ClCompile Include="..\..\source\residual.cpp" />
+    <ClCompile Include="..\..\source\segmentation.cpp" />
     <ClCompile Include="..\..\source\sparsefilter.cpp" />
     <ClCompile Include="..\..\source\view.cpp" />
     <ClCompile Include="..\..\source\warping.cpp" />

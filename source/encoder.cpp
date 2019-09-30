@@ -44,6 +44,7 @@
 #include "psnr.hh"
 #include "warping.hh"
 #include "bitdepth.hh"
+#include "segmentation.hh"
 
 encoder::encoder(const WaSPsetup encoder_setup)
 {
@@ -71,6 +72,8 @@ void encoder::write_statsfile() {
 
     conf_out["type"] = "WaSP";
 
+    conf_out["n_seg_iterations"] = n_seg_iterations;
+
     vector<nlohmann::json::object_t> views;
 
     for (int32_t ii = 0; ii < n_views_total; ii++) {
@@ -87,6 +90,8 @@ void encoder::write_statsfile() {
 
         view_configuration["NNt"] = SAI->NNt;
         view_configuration["Ms"] = SAI->Ms;
+
+        view_configuration["num_of_sparse_filters"] = SAI->sparse_filters.size();
 
         view_configuration["QP_range"] = SAI->QP_range;
         view_configuration["bpp_range"] = SAI->bpp_range;
@@ -207,6 +212,8 @@ void encoder::load_config_json(string config_json_file) {
     nc_merge = conf["nc_merge"].get<int32_t>();
     nc_color_ref = conf["nc_color_ref"].get<int32_t>();
     SP_B = conf["SP_B"].get<int32_t>();
+
+    n_seg_iterations = conf["n_seg_iterations"].get<int32_t>();
 
     vector<nlohmann::json::object_t> conf_views =
         conf["views"].get<vector<nlohmann::json::object_t>>();
@@ -486,8 +493,8 @@ void encoder::generate_normalized_disparity() {
 
     int32_t maxh = get_highest_level(LF, n_views_total);
 
-    /*we dont have to do the last level*/
-    for (int32_t hlevel = 1; hlevel < maxh; hlevel++) {
+    /*we DO have to do the last level*/
+    for (int32_t hlevel = 1; hlevel <= maxh; hlevel++) {
 
         std::vector< int32_t > view_indices;
 
@@ -750,6 +757,46 @@ void encoder::generate_texture() {
 
                 if (SAI->Ms > 0 && SAI->NNt > 0) {
 
+
+                    /* OBTAIN SEGMENTATION*/
+                    int32_t tmp_w, tmp_r, tmp_ncomp;
+                    aux_read16PGMPPM(
+                        SAI->path_out_pgm,
+                        tmp_w,
+                        tmp_r,
+                        tmp_ncomp,
+                        SAI->depth);
+
+                    uint16_t *img16_padded =
+                        padArrayUint16_t(
+                            SAI->depth,
+                            SAI->nr,
+                            SAI->nc,
+                            SAI->NNt);
+
+                    delete[](SAI->depth);
+                    SAI->depth = nullptr;
+
+                    std::vector<uint16_t> img16_padded_v(
+                        img16_padded,
+                        img16_padded + (SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt));
+
+                    segmentation seg = normdispsegmentation(
+                        img16_padded_v,
+                        n_seg_iterations,
+                        SAI->nr + 2 * SAI->NNt,
+                        SAI->nc + 2 * SAI->NNt);
+
+                    std::vector<uint16_t> seg16(seg.seg.begin(), seg.seg.end());
+
+                    aux_write16PGMPPM("C:/Temp/seg.pgm",
+                        SAI->nc + 2 * SAI->NNt,
+                        SAI->nr + 2 * SAI->NNt,
+                        1,
+                        &seg16[0]);
+
+                    /*END OBTAIN SEGMENTATION*/
+
                     uint16_t *original_color_view = read_input_ppm(
                         SAI->path_input_ppm,
                         SAI->nr,
@@ -807,29 +854,23 @@ void encoder::generate_texture() {
                                 SAI->nc,
                                 SAI->NNt);
 
-                        SAI->sparse_filters.push_back(getGlobalSparseFilter_vec(
-                            padded_icomp_orig,
-                            padded_regressors,
-                            SAI->nr + 2 * SAI->NNt,
-                            SAI->nc + 2 * SAI->NNt,
-                            SAI->NNt,
-                            SAI->Ms,
-                            SPARSE_BIAS_TERM));
+                        for (int ir = 1;
+                            ir <= seg.number_of_regions;
+                            ir++)
+                        {
 
-                        //FILE *tmp;
-                        //tmp = fopen("C:/Temp/coeffs.data", "ab");
+                            SAI->sparse_filters.push_back(getGlobalSparseFilter_vec_reg(
+                                padded_icomp_orig,
+                                padded_regressors,
+                                seg.seg,
+                                ir,
+                                SAI->nr + 2 * SAI->NNt,
+                                SAI->nc + 2 * SAI->NNt,
+                                SAI->NNt,
+                                SAI->Ms,
+                                SPARSE_BIAS_TERM));
+                        }
 
-                        //fwrite(&SAI->sparse_filters.at(icomp).filter_coefficients[0],
-                        //    sizeof(double),
-                        //    SAI->sparse_filters.at(icomp).filter_coefficients.size(),
-                        //    tmp);
-
-                        //fclose(tmp);
-
-                        /*  aux_write16PGMPPM("C:/Temp/padded_sai.pgm", SAI->nc + 2 * SAI->NNt, SAI->nr + 2 * SAI->NNt, 1, padded_icomp_sai);
-                        aux_write16PGMPPM("C:/Temp/padded_orig.pgm", SAI->nc + 2 * SAI->NNt, SAI->nr + 2 * SAI->NNt, 1, padded_icomp_orig);*/
-
-                        //delete[](padded_icomp_sai);
                         delete[](padded_icomp_orig);
 
                         /* exit(0);*/
@@ -843,13 +884,9 @@ void encoder::generate_texture() {
                     uint16_t *sp_filtered_image =
                         new uint16_t[SAI->nr*SAI->nc*SAI->ncomp]();
 
+                    int ee = 0;
+
                     for (int32_t icomp = 0; icomp < nc_sparse; icomp++) {
-
-                        quantize_and_reorder_spfilter(
-                            SAI->sparse_filters.at(icomp));
-
-                        dequantize_and_reorder_spfilter(
-                            SAI->sparse_filters.at(icomp));
 
                         std::vector<std::vector<uint16_t>> padded_regressors;
 
@@ -875,15 +912,32 @@ void encoder::generate_texture() {
                             }
                         }
 
-                        std::vector<double> filtered_icomp =
-                            applyGlobalSparseFilter_vec(
+                        std::vector<double> filtered_icomp( (SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt), 0);
+
+                        for (int ir = 1;
+                            ir <= seg.number_of_regions;
+                            ir++)
+                        {
+
+                            quantize_and_reorder_spfilter(
+                                SAI->sparse_filters.at(ee));
+
+                            dequantize_and_reorder_spfilter(
+                                SAI->sparse_filters.at(ee));
+
+                            applyGlobalSparseFilter_vec_reg(
                                 padded_regressors,
+                                seg.seg,
+                                ir,
                                 SAI->nr + 2 * SAI->NNt,
                                 SAI->nc + 2 * SAI->NNt,
                                 SAI->Ms,
                                 SAI->NNt,
                                 SPARSE_BIAS_TERM,
-                                SAI->sparse_filters.at(icomp).filter_coefficients);
+                                SAI->sparse_filters.at(ee++).filter_coefficients,
+                                filtered_icomp);
+
+                        }
 
                         for (int32_t iij = 0; iij < (SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt); iij++) {
 
@@ -911,6 +965,8 @@ void encoder::generate_texture() {
                         delete[](cropped_icomp);
 
                     }
+
+                    SAI->number_of_sp_filters = SAI->sparse_filters.size();
 
                     /* CLEAN */
 
@@ -1425,6 +1481,12 @@ void encoder::write_bitstream() {
 
     n_bytes_prediction += (int32_t)fwrite(
         &nc_color_ref,
+        sizeof(uint8_t),
+        1,
+        output_LF_file) * sizeof(int32_t);
+
+    n_bytes_prediction += (int32_t)fwrite(
+        &n_seg_iterations,
         sizeof(uint8_t),
         1,
         output_LF_file) * sizeof(int32_t);
