@@ -49,7 +49,7 @@ WaSPConfig::~WaSPConfig() {
 
 bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
 
-    if (argc > 7) {
+    if (argc > 9) {
         return false;
     }
 
@@ -79,6 +79,14 @@ bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
             WaSP_setup.wasp_kakadu_directory = std::string(argv[ii + 1]);
         }
 
+        else if (!strcmp(argv[ii], "-t")) {
+            WaSP_setup.hm_decoder = std::string(argv[ii + 1]);
+        }
+
+        else if (!strcmp(argv[ii], "--TAppDecoder")) {
+            WaSP_setup.hm_decoder = std::string(argv[ii + 1]);
+        }
+
         else {
             return false;
         }
@@ -100,6 +108,11 @@ bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
         return false;
     }
 
+    if (WaSP_setup.hm_decoder.length() == 0) {
+        printf("\n Path to TAppDecoder needs to be defined\n");
+        return false;
+    }
+
     return true;
 
 }
@@ -110,8 +123,10 @@ void WaSPConfig::print_encoder_help() {
         "\n\t--output [OUTPUT DIRECTORY .LF/.PPM/.PGM]"
         "\n\t--config [JSON CONFIG]"
         "\n\t--kakadu [KAKADU BINARY DIRECTORY]"
-        "\n\t--sparse_subsampling [Subsampling factor when solving sparse filter."
-        "\n\t\tneeds to be integer >0. Values 2 or 4 will increase encoder speed with some loss in PSNR.]\n\n");
+        "\n\t--TAppEncoder [Path to TAppEncoder executable]"
+        "\n\t--HEVCcfg [Path to TAppEncoder config file]"
+        "\n\t--sparse_subsampling [Subsampling factor when solving sparse filter,"
+        " needs to be integer >0. Values 2 or 4 will increase encoder speed with some loss in PSNR.]\n\n");
     return;
 }
 
@@ -119,7 +134,8 @@ void WaSPConfig::print_decoder_help() {
     printf("\n\tUsage: wasp-decoder"
         "\n\t--input [INPUT .LF]"
         "\n\t--output [OUTPUT DIRECTORY .PPM/.PGM]"
-        "\n\t--kakadu [KAKADU BINARY DIRECTORY]\n\n");
+        "\n\t--kakadu [KAKADU BINARY DIRECTORY]"
+        "\n\t--TAppDecoder [Path to TAppDecoder executable]\n\n");
     return;
 }
 
@@ -133,7 +149,7 @@ void WaSPConfig::print_intro() {
         "\n\tPublication: P. Astola and I. Tabus,"
         "\n\t\t\tWaSP: Hierarchical Warping, Merging, and Sparse Prediction for Light Field Image Compression,"
         "\n\t\t\t2018 7th European Workshop on Visual Information Processing (EUVIP), Tampere, 2018, pp. 1-6."
-        "\n\n");
+        "\n\n\tBuild date: %s %s\n\n",__DATE__,__TIME__);
     printf("\n\t--------------------------------------------------------\n");
     return;
 }
@@ -186,16 +202,42 @@ bool WaSPConfig::parseCommandLine_encoder(int argc, char *argv[]) {
 
         }
 
+        else if (!strcmp(argv[ii], "-t")) {
+            WaSP_setup.hm_encoder = std::string(argv[ii + 1]);
+
+        }
+
+        else if (!strcmp(argv[ii], "--TAppEncoder")) {
+            WaSP_setup.hm_encoder = std::string(argv[ii + 1]);
+
+        }
+
+        else if (!strcmp(argv[ii], "-d")) {
+            WaSP_setup.hm_decoder = std::string(argv[ii + 1]);
+
+        }
+
+        else if (!strcmp(argv[ii], "--TAppDecoder")) {
+            WaSP_setup.hm_decoder = std::string(argv[ii + 1]);
+
+        }
+
+        else if (!strcmp(argv[ii], "-x")) {
+            WaSP_setup.hm_cfg = std::string(argv[ii + 1]);
+
+        }
+
+        else if (!strcmp(argv[ii], "--HEVCcfg")) {
+            WaSP_setup.hm_cfg = std::string(argv[ii + 1]);
+
+        }
+
         else {
             return false;
         }
 
     }
 
-    if (WaSP_setup.config_file.length() == 0) {
-        printf("\n Config file (.json) not set\n");
-        return false;
-    }
 
     if (WaSP_setup.input_directory.length() == 0) {
         printf("\n Input directory not set\n");
@@ -207,8 +249,28 @@ bool WaSPConfig::parseCommandLine_encoder(int argc, char *argv[]) {
         return false;
     }
 
+    if (WaSP_setup.config_file.length() == 0) {
+        printf("\n Config file (.json) not set\n");
+        return false;
+    }
+
     if (WaSP_setup.wasp_kakadu_directory.length() == 0) {
         printf("\n Kakadu directory not set\n");
+        return false;
+    }
+
+    if (WaSP_setup.hm_encoder.length() < 1) {
+        printf("\n Path to TAppEncoder needs to be defined\n");
+        return false;
+    }
+
+    if (WaSP_setup.hm_decoder.length() < 1) {
+        printf("\n Path to TAppDecoder needs to be defined\n");
+        return false;
+    }
+
+    if (WaSP_setup.hm_cfg.length() < 1) {
+        printf("\n Path to HM .cfg needs to be defined\n");
         return false;
     }
 

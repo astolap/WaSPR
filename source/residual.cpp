@@ -498,18 +498,20 @@ long encodeHM(
     const int32_t nframes,
     const int32_t nr,
     const int32_t nc,
-    const char *outputYUV) {
+    const char *outputYUV,
+    const char *hm_encoder,
+    const char *input_cfg) {
 
 
     aux_ensure_directory(input444);
     aux_ensure_directory(output_hevc);
     aux_ensure_directory(outputYUV);
 
-    const char *input_cfg = 
-        "C:/Local/astolap/Data/JPEG_PLENO_2019/SAN_DIEGO/Matlab/hm_inter.cfg";
+    //const char *input_cfg = 
+    //    "C:/Local/astolap/Data/JPEG_PLENO_2019/SAN_DIEGO/Matlab/hm_inter.cfg";
 
-    const char *hm_encoder =
-        "C:/Local/astolap/Data/JPEG_PLENO_2019/BRUSSELS/HEVC-HM/bin/vc2015/x64/Release/TAppEncoder.exe";
+    //const char *hm_encoder =
+    //    "C:/Local/astolap/Data/JPEG_PLENO_2019/BRUSSELS/HEVC-HM/bin/vc2015/x64/Release/TAppEncoder.exe";
 
     std::string yuvformatstr;
 
@@ -560,12 +562,13 @@ long encodeHM(
 
 int32_t decodeHM(
     const char *input_hevc,
-    const char *outputYUV) {
+    const char *outputYUV,
+    const char *hm_decoder) {
 
     aux_ensure_directory(outputYUV);
 
-    const char *hm_encoder =
-        "C:/Local/astolap/Data/JPEG_PLENO_2019/BRUSSELS/HEVC-HM/bin/vc2015/x64/Release/TAppDecoder.exe";
+    //const char *hm_decoder =
+    //    "C:/Local/astolap/Data/JPEG_PLENO_2019/BRUSSELS/HEVC-HM/bin/vc2015/x64/Release/TAppDecoder.exe";
 
     char hm_call[2048];
 
@@ -573,7 +576,7 @@ int32_t decodeHM(
         "%s"
         " -b %s"
         " -o %s",
-        hm_encoder,
+        hm_decoder,
         input_hevc,
         outputYUV);
 

@@ -117,7 +117,8 @@ void writeYUV444_seq_to_disk(
 
 int32_t decodeHM(
     const char *input_hevc,
-    const char *outputYUV);
+    const char *outputYUV,
+    const char *);
 
 long encodeHM(
     const char *input444,
@@ -127,7 +128,9 @@ long encodeHM(
     const int32_t nframes,
     const int32_t nr,
     const int32_t nc,
-    const char *outputYUV);
+    const char *outputYUV,
+    const char *,
+    const char *);
 
 void getJP2Header(
     uint8_t *JP2, 

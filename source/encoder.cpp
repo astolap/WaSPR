@@ -1124,7 +1124,9 @@ void encoder::generate_texture() {
                         YUV_444_SEQ.size(),
                         nc1,
                         nr1,
-                        SAI0->decoder_raw_output_YUV); /*transpose for nr,nc*/
+                        SAI0->decoder_raw_output_YUV,
+                        setup.hm_encoder.c_str(),
+                        setup.hm_cfg.c_str()); /*transpose for nr,nc*/
 
                     double bpphevc =
                         double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
@@ -1172,7 +1174,9 @@ void encoder::generate_texture() {
                 YUV_444_SEQ.size(),
                 nc1,
                 nr1,
-                SAI0->decoder_raw_output_YUV); /*transpose for nr,nc*/
+                SAI0->decoder_raw_output_YUV,
+                setup.hm_encoder.c_str(),
+                setup.hm_cfg.c_str()); /*transpose for nr,nc*/
 
             double bpphevc =
                 double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
@@ -1207,7 +1211,8 @@ void encoder::generate_texture() {
 
             int32_t status = decodeHM(
                 SAI0->hevc_texture,
-                SAI0->decoder_raw_output_YUV);
+                SAI0->decoder_raw_output_YUV,
+                setup.hm_decoder.c_str());
 
             /*convert (any YUV format) -> YUV444 */
 

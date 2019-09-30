@@ -52,6 +52,11 @@ struct WaSPsetup {
     string stats_file;
     int32_t sparse_subsampling; 
 
+    /*HM specific*/
+    string hm_encoder;
+    string hm_cfg;
+    string hm_decoder;
+
 };
 
 class WaSPConfig {

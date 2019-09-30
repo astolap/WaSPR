@@ -542,7 +542,8 @@ void decoder::decode_views() {
 
                 int32_t status = decodeHM(
                     SAI0->hevc_texture,
-                    SAI0->decoder_raw_output_YUV);
+                    SAI0->decoder_raw_output_YUV,
+                    setup.hm_decoder.c_str());
 
                 /*convert (any YUV format) -> YUV444 */
 
