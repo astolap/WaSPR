@@ -1158,7 +1158,7 @@ void encoder::generate_texture() {
                         SAI0->encoder_raw_output_444);
 
                 }
-                else if( nc_color_ref<2 )
+                else if( nc_color_ref<2 || (SAI0->level>1 && YUVTYPE==YUV400) )
                 {
 
                     std::vector<std::vector<uint16_t>> yuv400_seq = convertYUVseqTo400(

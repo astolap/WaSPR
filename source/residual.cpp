@@ -764,6 +764,7 @@ long encodeKVAZAAR(
         " --qp %d"
         " --input-res %dx%d"
         " --range pc"
+        " --preset slower"
         " --input-bitdepth %d",
         kvazaar_encoder,
         input444,
