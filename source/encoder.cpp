@@ -797,17 +797,20 @@ void encoder::generate_texture() {
                                 SAI->nc,
                                 SAI->NNt));
 
-                        for (int ikr = 0; ikr < SAI->n_references; ikr++) {
+                        if (SP_B) {
 
-                            view *ref_view = LF + SAI->references[ikr];
+                            for (int ikr = 0; ikr < SAI->n_references; ikr++) {
 
-                            padded_regressors.push_back(
-                                padArrayUint16_t_vec(
-                                    ref_view->color + SAI->nr*SAI->nc*icomp,
-                                    SAI->nr,
-                                    SAI->nc,
-                                    SAI->NNt));
+                                view *ref_view = LF + SAI->references[ikr];
 
+                                padded_regressors.push_back(
+                                    padArrayUint16_t_vec(
+                                        ref_view->color + SAI->nr*SAI->nc*icomp,
+                                        SAI->nr,
+                                        SAI->nc,
+                                        SAI->NNt));
+
+                            }
                         }
 
                         uint16_t *padded_icomp_orig =
@@ -831,7 +834,8 @@ void encoder::generate_texture() {
                                 SAI->nc + 2 * SAI->NNt,
                                 SAI->NNt,
                                 SAI->Ms,
-                                SPARSE_BIAS_TERM));
+                                SPARSE_BIAS_TERM,
+                                setup.sparse_subsampling));
                         }
 
                         delete[](padded_icomp_orig);
@@ -1143,7 +1147,7 @@ void encoder::generate_texture() {
 
                 /*super cumbersome YUV transform to suite kvazaar ...*/
 
-                if ( YUVTYPE==YUV420 && nc_color_ref>1)
+                if ( YUVTYPE==YUV420 || (SAI0->level<2 && nc_color_ref>1) )
                 {
 
                     std::vector<std::vector<uint16_t>> yuv420_seq = convertYUVseqTo420(

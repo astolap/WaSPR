@@ -80,7 +80,8 @@ spfilter getGlobalSparseFilter_vec_reg(
     const int32_t nc,
     const int32_t NNt,
     const int32_t Ms,
-    const double bias_term_value);
+    const double bias_term_value,
+    const int32_t ss);
 
 std::vector<double> applyGlobalSparseFilter_vec(
     const std::vector<std::vector<uint16_t>> &input_images,

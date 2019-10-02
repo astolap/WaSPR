@@ -45,7 +45,8 @@ spfilter getGlobalSparseFilter_vec_reg(
     const int32_t nc,
     const int32_t NNt,
     const int32_t Ms,
-    const double bias_term_value) {
+    const double bias_term_value,
+    const int32_t ss) {
 
     int32_t NAA = input_images.size();
 
@@ -107,6 +108,25 @@ spfilter getGlobalSparseFilter_vec_reg(
         }
     }
 
+    double *AAss = new double[ (Npp/ss) * MT]();
+    double *Ydss = new double[Npp / ss]();
+
+    for (int ii = 0; ii < Npp-ss; ii += ss)
+    {
+        *(Ydss + ii / ss) = *(Yd + ii);
+        for (int ij = 0; ij < MT; ij++)
+        {
+            *(AAss + ii/ss + (Npp / ss)*ij) = *(AA + ii+ ij*Npp);
+
+        }
+    }
+
+    delete[](AA);
+    delete[](Yd);
+
+    AA = AAss;
+    Yd = Ydss;
+
     int32_t *PredRegr0 = new int32_t[MT]();
     double *PredTheta0 = new double[MT]();
 
@@ -118,7 +138,7 @@ spfilter getGlobalSparseFilter_vec_reg(
         Ms,
         MT,
         MT,
-        Npp);
+        Npp/ss);
 
     if (AA != nullptr) {
         delete[](AA);
