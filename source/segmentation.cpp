@@ -1,8 +1,66 @@
 #include "segmentation.hh"
 #include "medianfilter.hh"
+#include "ppm.hh"
 
 #include <algorithm>
 #include <iterator>
+
+#define SAVE_SEGMENTATION true
+
+segmentation makeSegmentation(
+    view* SAI, 
+    const int32_t n_seg_iterations)
+{
+
+    segmentation seg;
+
+    if (n_seg_iterations > 0) {
+
+        int32_t tmp_w, tmp_r, tmp_ncomp;
+        aux_read16PGMPPM(
+            SAI->path_out_pgm,
+            tmp_w,
+            tmp_r,
+            tmp_ncomp,
+            SAI->depth);
+
+        uint16_t *img16_padded =
+            padArrayUint16_t(
+                SAI->depth,
+                SAI->nr,
+                SAI->nc,
+                SAI->NNt);
+
+        delete[](SAI->depth);
+        SAI->depth = nullptr;
+
+        std::vector<uint16_t> img16_padded_v(
+            img16_padded,
+            img16_padded + (SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt));
+
+        seg = normdispsegmentation(
+            img16_padded_v,
+            n_seg_iterations,
+            SAI->nr + 2 * SAI->NNt,
+            SAI->nc + 2 * SAI->NNt);
+
+        std::vector<uint16_t> seg16(seg.seg.begin(), seg.seg.end());
+
+        if (SAVE_SEGMENTATION)
+        {
+            aux_write16PGMPPM(SAI->path_output_seg,
+                SAI->nc + 2 * SAI->NNt,
+                SAI->nr + 2 * SAI->NNt,
+                1,
+                &seg16[0]);
+        }
+    }
+    else {
+        seg.seg = std::vector<int32_t>((SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt), 1);
+        seg.number_of_regions = 1;
+    }
+    return seg;
+}
 
 segmentation normdispsegmentation(
     const std::vector<uint16_t> &img,

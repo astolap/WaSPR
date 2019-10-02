@@ -756,46 +756,9 @@ void encoder::generate_texture() {
                     DispTargs);
 
                 if (SAI->Ms > 0 && SAI->NNt > 0) {
-
-
+        
                     /* OBTAIN SEGMENTATION*/
-                    int32_t tmp_w, tmp_r, tmp_ncomp;
-                    aux_read16PGMPPM(
-                        SAI->path_out_pgm,
-                        tmp_w,
-                        tmp_r,
-                        tmp_ncomp,
-                        SAI->depth);
-
-                    uint16_t *img16_padded =
-                        padArrayUint16_t(
-                            SAI->depth,
-                            SAI->nr,
-                            SAI->nc,
-                            SAI->NNt);
-
-                    delete[](SAI->depth);
-                    SAI->depth = nullptr;
-
-                    std::vector<uint16_t> img16_padded_v(
-                        img16_padded,
-                        img16_padded + (SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt));
-
-                    segmentation seg = normdispsegmentation(
-                        img16_padded_v,
-                        n_seg_iterations,
-                        SAI->nr + 2 * SAI->NNt,
-                        SAI->nc + 2 * SAI->NNt);
-
-                    std::vector<uint16_t> seg16(seg.seg.begin(), seg.seg.end());
-
-                    aux_write16PGMPPM("C:/Temp/seg.pgm",
-                        SAI->nc + 2 * SAI->NNt,
-                        SAI->nr + 2 * SAI->NNt,
-                        1,
-                        &seg16[0]);
-
-                    /*END OBTAIN SEGMENTATION*/
+                    segmentation seg = makeSegmentation(SAI, n_seg_iterations);
 
                     uint16_t *original_color_view = read_input_ppm(
                         SAI->path_input_ppm,
@@ -881,8 +844,9 @@ void encoder::generate_texture() {
                     uint16_t *sp_filtered_image_padded =
                         new uint16_t[(SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt)*SAI->ncomp]();
 
-                    uint16_t *sp_filtered_image =
-                        new uint16_t[SAI->nr*SAI->nc*SAI->ncomp]();
+                    std::vector<uint16_t> sp_filtered_image(
+                        SAI->color, 
+                        SAI->color+ SAI->nr*SAI->nc*SAI->ncomp );
 
                     int ee = 0;
 
@@ -958,7 +922,7 @@ void encoder::generate_texture() {
                                 SAI->NNt);
 
                         memcpy(
-                            sp_filtered_image + SAI->nr*SAI->nc*icomp,
+                            sp_filtered_image.data() + SAI->nr*SAI->nc*icomp,
                             cropped_icomp,
                             sizeof(uint16_t)*SAI->nr*SAI->nc);
 
@@ -991,7 +955,7 @@ void encoder::generate_texture() {
 
                     double psnr_with_sparse = PSNR(
                         original_color_view,
-                        sp_filtered_image,
+                        sp_filtered_image.data(),
                         SAI->nr,
                         SAI->nc,
                         nc_sparse,
@@ -1001,14 +965,13 @@ void encoder::generate_texture() {
 
                         memcpy(
                             SAI->color,
-                            sp_filtered_image,
+                            sp_filtered_image.data(),
                             sizeof(uint16_t)*SAI->nr*SAI->nc*SAI->ncomp);
 
                         SAI->use_global_sparse = true;
 
                     }
 
-                    delete[](sp_filtered_image);
                     delete[](original_color_view);
 
                 }
@@ -1169,7 +1132,7 @@ void encoder::generate_texture() {
 
                 int32_t QPstep = 3;
 
-                for (int32_t QP = 0; QP < 51; QP += QPstep) {
+                for (int32_t QP = 0; QP <= 51; QP += QPstep) {
 
                     //for (int32_t QP = 25; QP = 25; QP=25 ) {
                     long bytes_hevc = encodeHM(
@@ -1237,8 +1200,6 @@ void encoder::generate_texture() {
             double bpphevc =
                 double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
 
-
-
             printf("\nFinal QP=%d\tbpp=\t%f\n", QPfinal, bpphevc);
 
             for (int32_t ii = 0; ii < view_indices.size(); ii++) {
@@ -1274,7 +1235,7 @@ void encoder::generate_texture() {
 
             std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
                 SAI0->decoder_raw_output_YUV,
-                hlevel>1 ? YUVTYPE : YUVTYPE_1LEVEL,
+                hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV420 : YUV400),
                 nr1,
                 nc1,
                 hevc_i_order.size());

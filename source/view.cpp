@@ -196,6 +196,14 @@ void setPaths(
         SAI->c,
         SAI->r);
 
+    /*OUTPUT SEG*/
+    sprintf(
+        SAI->path_output_seg,
+        "%s/PGM/%03d_%03d_segmentation.pgm",
+        output_dir,
+        SAI->c,
+        SAI->r);
+
     /*INTERNAL OUTPUT*/
     sprintf(
         SAI->path_internal_colorspace_out_ppm,
@@ -279,7 +287,7 @@ void setPaths(
     //    SAI->c,
     //    SAI->r);
 
-    /*to save some disk space*/
+    /*to save some disk space we overwrite*/
     sprintf(
         SAI->path_raw_texture_residual_at_decoder_ppm,
         "%s",

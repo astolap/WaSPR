@@ -160,6 +160,8 @@ struct view {
 
   char hevc_texture[1024];
 
+  char path_output_seg[1024];
+
   std::vector<spfilter> sparse_filters;
 
   uint16_t number_of_sp_filters;

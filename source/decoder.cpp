@@ -352,43 +352,7 @@ void decoder::predict_texture_view(view* SAI) {
         if (SAI->use_global_sparse) {
 
             /* OBTAIN SEGMENTATION*/
-            int32_t tmp_w, tmp_r, tmp_ncomp;
-            aux_read16PGMPPM(
-                SAI->path_out_pgm,
-                tmp_w,
-                tmp_r,
-                tmp_ncomp,
-                SAI->depth);
-
-            uint16_t *img16_padded =
-                padArrayUint16_t(
-                    SAI->depth,
-                    SAI->nr,
-                    SAI->nc,
-                    SAI->NNt);
-
-            delete[](SAI->depth);
-            SAI->depth = nullptr;
-
-            std::vector<uint16_t> img16_padded_v(
-                img16_padded,
-                img16_padded + (SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt));
-
-            segmentation seg = normdispsegmentation(
-                img16_padded_v,
-                n_seg_iterations,
-                SAI->nr + 2 * SAI->NNt,
-                SAI->nc + 2 * SAI->NNt);
-
-            std::vector<uint16_t> seg16(seg.seg.begin(), seg.seg.end());
-
-            aux_write16PGMPPM("C:/Temp/seg.pgm",
-                SAI->nc + 2 * SAI->NNt,
-                SAI->nr + 2 * SAI->NNt,
-                1,
-                &seg16[0]);
-
-            /*END OBTAIN SEGMENTATION*/
+            segmentation seg = makeSegmentation(SAI, n_seg_iterations);
 
             /*READ DECODED REFERENCE VIEWS*/
             for (int ikr = 0; ikr < SAI->n_references; ikr++) {
@@ -411,8 +375,9 @@ void decoder::predict_texture_view(view* SAI) {
             uint16_t *sp_filtered_image_padded =
                 new uint16_t[(SAI->nr + 2 * SAI->NNt)*(SAI->nc + 2 * SAI->NNt)*SAI->ncomp]();
 
-            uint16_t *sp_filtered_image =
-                new uint16_t[SAI->nr*SAI->nc*SAI->ncomp]();
+            std::vector<uint16_t> sp_filtered_image(
+                SAI->color,
+                SAI->color + SAI->nr*SAI->nc*SAI->ncomp);
 
             int ee = 0;
 
@@ -485,7 +450,7 @@ void decoder::predict_texture_view(view* SAI) {
                         SAI->NNt);
 
                 memcpy(
-                    sp_filtered_image + SAI->nr*SAI->nc*icomp,
+                    sp_filtered_image.data() + SAI->nr*SAI->nc*icomp,
                     cropped_icomp,
                     sizeof(uint16_t)*SAI->nr*SAI->nc);
 
@@ -506,11 +471,10 @@ void decoder::predict_texture_view(view* SAI) {
 
             memcpy(
                 SAI->color,
-                sp_filtered_image,
+                sp_filtered_image.data(),
                 sizeof(uint16_t)*SAI->nr*SAI->nc*SAI->ncomp);
 
             delete[](sp_filtered_image_padded);
-            delete[](sp_filtered_image);
         }
     }
 }

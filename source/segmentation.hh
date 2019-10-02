@@ -1,6 +1,7 @@
 #ifndef SEGMENTATION_HH
 #define SEGMENTATION_HH
 
+#include "view.hh"
 #include <vector>
 
 struct segmentation {
@@ -14,6 +15,10 @@ struct segmentation {
     int32_t number_of_regions;
 
 };
+
+segmentation makeSegmentation(
+    view* SAI,
+    const int32_t n_seg_iterations);
 
 segmentation normdispsegmentation(
     const std::vector<uint16_t> &img,
