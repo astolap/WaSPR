@@ -1125,6 +1125,61 @@ void encoder::generate_texture() {
 
             int32_t QPfinal = SAI0->preset_QP;
 
+            long(*hevc_encoder)(
+                const char *,
+                const char *,
+                YUV_FORMAT,
+                const int32_t,
+                const int32_t,
+                const int32_t,
+                const int32_t,
+                const char *,
+                const char *,
+                const char *);
+
+            if (USE_KVAZAAR) {
+
+                hevc_encoder = &encodeKVAZAAR;
+
+                /*super cumbersome YUV transform to suite kvazaar ...*/
+
+                if ( YUVTYPE==YUV420 && nc_color_ref>1)
+                {
+
+                    std::vector<std::vector<uint16_t>> yuv420_seq = convertYUVseqTo420(
+                        SAI0->encoder_raw_output_444,
+                        YUV444,
+                        nr1,
+                        nc1,
+                        YUV_444_SEQ.size());
+
+                    writeYUV420_seq_to_disk(
+                        yuv420_seq,
+                        SAI0->encoder_raw_output_444);
+
+                }
+                else if( nc_color_ref<2 )
+                {
+
+                    std::vector<std::vector<uint16_t>> yuv400_seq = convertYUVseqTo400(
+                        SAI0->encoder_raw_output_444,
+                        YUV444,
+                        nr1,
+                        nc1,
+                        YUV_444_SEQ.size());
+
+                    writeYUV400_seq_to_disk(
+                        yuv400_seq,
+                        SAI0->encoder_raw_output_444);
+
+                }
+
+            }
+            else
+            {
+                hevc_encoder = &encodeHM;
+            }
+
             if (SAI0->preset_QP < 0) {
 
                 std::vector<double> bpps;
@@ -1135,7 +1190,7 @@ void encoder::generate_texture() {
                 for (int32_t QP = 0; QP <= 51; QP += QPstep) {
 
                     //for (int32_t QP = 25; QP = 25; QP=25 ) {
-                    long bytes_hevc = encodeHM(
+                    long bytes_hevc = hevc_encoder(
                         SAI0->encoder_raw_output_444,
                         SAI0->hevc_texture,
                         hlevel > 1 ? YUVTYPE: (nc_color_ref>1 ? YUV420 : YUV400),
@@ -1185,7 +1240,7 @@ void encoder::generate_texture() {
                 }
             }
 
-            long bytes_hevc = encodeHM(
+            long bytes_hevc = hevc_encoder(
                 SAI0->encoder_raw_output_444,
                 SAI0->hevc_texture,
                 hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV420 : YUV400),

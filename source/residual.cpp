@@ -231,6 +231,66 @@ void writeYUV444_seq_to_disk(
 
 }
 
+void writeYUV400_seq_to_disk(
+    const std::vector< std::vector<uint16_t>> &YUV_400_SEQ,
+    const char *output_400) {
+
+    aux_ensure_directory(output_400);
+
+    FILE *output_400_file = fopen(output_400, "wb");
+
+    for (uint32_t fr = 0; fr < YUV_400_SEQ.size(); fr++) {
+
+        fwrite(
+            YUV_400_SEQ.at(fr).data(), 
+            sizeof(uint16_t), 
+            YUV_400_SEQ.at(fr).size(),
+            output_400_file);
+
+    }
+
+    fclose(output_400_file);
+
+}
+
+void writeYUV420_seq_to_disk(
+    const std::vector< std::vector<uint16_t>> &YUV_420_SEQ,
+    const char *output_420) {
+
+    aux_ensure_directory(output_420);
+
+    FILE *output_420_file = fopen(output_420, "wb");
+
+    int32_t nt = YUV_420_SEQ.at(0).size();
+    int32_t np = static_cast<int32_t>(double(nt) / 1.5); /*we assume that input format is 3-channel*/
+
+    for (uint32_t fr = 0; fr < YUV_420_SEQ.size(); fr++) {
+
+        std::vector<uint16_t> Y;
+        std::vector<uint16_t> U;
+        std::vector<uint16_t> V;
+
+        /*the image will be transposed,
+        since we use column major and YUV format is row major*/
+        for (int32_t ii = 0; ii < np; ii++) {
+            Y.push_back(YUV_420_SEQ.at(fr).at(ii));
+        }
+
+        for (int32_t ii = 0; ii < np/4; ii++) {
+            U.push_back(YUV_420_SEQ.at(fr).at(np+ii));
+            V.push_back(YUV_420_SEQ.at(fr).at(np+np/4+ii));
+        }
+
+        fwrite(Y.data(), sizeof(uint16_t), np, output_420_file);
+        fwrite(U.data(), sizeof(uint16_t), np/4, output_420_file);
+        fwrite(V.data(), sizeof(uint16_t), np/4, output_420_file);
+
+    }
+
+    fclose(output_420_file);
+
+}
+
 std::vector<std::vector<uint16_t>> readYUV444_seq_from_disk(
     const char *input_444,
     const int32_t nframes,
@@ -358,8 +418,8 @@ std::vector<std::vector<uint16_t>> convertYUV420seqTo444(
                 YUV420.at(fr).begin()+nr*nc);
 
         std::vector<uint16_t> Ud(
-            &YUV420.at(fr)[nr*nc],
-            &YUV420.at(fr)[nr*nc + (nr/2)*(nc/2)]);
+            YUV420.at(fr).begin()+nr*nc,
+            YUV420.at(fr).begin()+nr*nc + (nr/2)*(nc/2));
 
         std::vector<uint16_t> Vd(
             YUV420.at(fr).begin()+nr*nc + (nr / 2)*(nc / 2),
@@ -407,6 +467,29 @@ std::vector<uint16_t> upscale(
     return output;
 }
 
+std::vector<uint16_t> downscale(
+    const std::vector<uint16_t> &input,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t rz) {
+
+    std::vector<uint16_t> output((nr/rz)*(nc/rz), 0);
+
+    for (int32_t row = 0; row < nr; row += rz) {
+        for (int32_t col = 0; col < nc; col += rz) {
+
+            int32_t lindx_out = row/rz + (col/rz)*(nr/rz);
+            int32_t lindx_in = row + col*nr;
+
+            output.at(lindx_out) = input.at(lindx_in);
+
+        }
+    }
+
+    return output;
+}
+
+
 std::vector<std::vector<uint16_t>> convertYUV400seqTo444(
     const std::vector<std::vector<uint16_t>> &YUV400,
     const int32_t nr,
@@ -432,14 +515,93 @@ std::vector<std::vector<uint16_t>> convertYUV400seqTo444(
 
 }
 
-std::vector<std::vector<uint16_t>> convertYUVseqTo444(
+std::vector<std::vector<uint16_t>> convertYUVseqTo400(
     const char *inputYUV,
     YUV_FORMAT input_yuv,
     const int32_t nr,
     const int32_t nc,
     const int nframes) {
 
-   
+    std::vector<std::vector<uint16_t>> YUV400SEQ;
+
+    if (input_yuv == YUV444) {
+
+        std::vector<std::vector<uint16_t>> YUV444SEQ = readYUV444_seq_from_disk(
+            inputYUV,
+            nframes,
+            nr,
+            nc);
+
+        for (int32_t fr = 0; fr < nframes; fr++) {
+
+            std::vector<uint16_t> Y(
+                YUV444SEQ.at(fr).begin(),
+                YUV444SEQ.at(fr).begin() + nr*nc);
+
+            YUV400SEQ.push_back(Y);
+
+        }
+    }
+
+    return YUV400SEQ;
+
+}
+
+std::vector<std::vector<uint16_t>> convertYUVseqTo420(
+    const char *inputYUV,
+    YUV_FORMAT input_yuv,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes) {
+
+    std::vector<std::vector<uint16_t>> YUV420SEQ;
+
+    if (input_yuv == YUV444) {
+
+        std::vector<std::vector<uint16_t>> YUV444SEQ = readYUV444_seq_from_disk(
+            inputYUV,
+            nframes,
+            nr,
+            nc);
+
+        for (int32_t fr = 0; fr < nframes; fr++) {
+
+            std::vector<uint16_t> Y(
+                YUV444SEQ.at(fr).begin(),
+                YUV444SEQ.at(fr).begin() + nr*nc);
+
+            std::vector<uint16_t> U(
+                YUV444SEQ.at(fr).begin() + nr*nc,
+                YUV444SEQ.at(fr).begin() + 2 * nr*nc);
+
+            std::vector<uint16_t> V(
+                YUV444SEQ.at(fr).begin() + 2 * nr*nc,
+                YUV444SEQ.at(fr).end());
+
+            std::vector<uint16_t> Ud = downscale(U, nr, nc, 2);
+            std::vector<uint16_t> Vd = downscale(V, nr, nc, 2);
+
+            std::vector<uint16_t> YUV420f;
+
+            YUV420f.insert(YUV420f.end(), Y.begin(), Y.end());
+            YUV420f.insert(YUV420f.end(), Ud.begin(), Ud.end());
+            YUV420f.insert(YUV420f.end(), Vd.begin(), Vd.end());
+
+            YUV420SEQ.push_back(YUV420f);
+
+        }
+    }
+
+    return YUV420SEQ;
+
+}
+
+std::vector<std::vector<uint16_t>> convertYUVseqTo444(
+    const char *inputYUV,
+    YUV_FORMAT input_yuv,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes) {
 
     if (input_yuv == YUV444) {
 
@@ -552,6 +714,69 @@ long encodeHM(
         yuvformatstr.c_str());
 
     int32_t status = system_1(hm_call);
+
+    long filesize = aux_GetFileSize(std::string(output_hevc));
+
+    return filesize;
+
+}
+
+long encodeKVAZAAR(
+    const char *input444,
+    const char *output_hevc,
+    YUV_FORMAT yuvformat,
+    const int32_t QP,
+    const int32_t nframes,
+    const int32_t nr,
+    const int32_t nc,
+    const char *outputYUV,
+    const char *hm_encoder,
+    const char *input_cfg) {
+
+    aux_ensure_directory(input444);
+    aux_ensure_directory(output_hevc);
+    aux_ensure_directory(outputYUV);
+
+    const char *kvazaar_encoder =
+        "C:/Local/astolap/Programs/kvazaar.exe";
+
+    std::string yuvformatstr;
+
+    if (yuvformat == YUV400) {
+        yuvformatstr = "P400";
+    }
+    if (yuvformat == YUV420) {
+        yuvformatstr = "P420";
+    }
+    if (yuvformat == YUV444) {
+        yuvformatstr = "P400";
+    }
+
+    char kva_call[2048];
+
+    sprintf(kva_call,
+        "%s"
+        " -i %s"
+        " -o %s"
+        " --input-fps %d"
+        " --input-format %s"
+        " --frames %d"
+        " --qp %d"
+        " --input-res %dx%d"
+        " --range pc"
+        " --input-bitdepth %d",
+        kvazaar_encoder,
+        input444,
+        output_hevc,
+        1,
+        yuvformatstr.c_str(),
+        nframes,
+        QP,
+        nc,
+        nr,
+        10);
+
+    int32_t status = system_1(kva_call);
 
     long filesize = aux_GetFileSize(std::string(output_hevc));
 

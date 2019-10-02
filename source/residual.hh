@@ -30,6 +30,8 @@
 #define YUVTYPE YUV400
 #define YUVTYPE_1LEVEL YUV400
 
+#define USE_KVAZAAR true
+
 #include <cstdint>
 
 using std::int32_t;
@@ -47,6 +49,34 @@ enum YUV_FORMAT {
     YUV444,
     YUV420,
     YUV400};
+
+void writeYUV400_seq_to_disk(
+    const std::vector< std::vector<uint16_t>> &YUV_400_SEQ,
+    const char *output_400);
+
+std::vector<std::vector<uint16_t>> convertYUVseqTo400(
+    const char *inputYUV,
+    YUV_FORMAT input_yuv,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes);
+
+void writeYUV420_seq_to_disk(
+    const std::vector< std::vector<uint16_t>> &YUV_420_SEQ,
+    const char *output_420);
+
+std::vector<std::vector<uint16_t>> convertYUVseqTo420(
+    const char *inputYUV,
+    YUV_FORMAT input_yuv,
+    const int32_t nr,
+    const int32_t nc,
+    const int nframes);
+
+std::vector<uint16_t> downscale(
+    const std::vector<uint16_t> &input,
+    const int32_t nr,
+    const int32_t nc,
+    const int32_t rz);
 
 std::vector<int32_t> getScanOrder(
     const view *LF,
@@ -118,6 +148,18 @@ void writeYUV444_seq_to_disk(
 int32_t decodeHM(
     const char *input_hevc,
     const char *outputYUV,
+    const char *);
+
+long encodeKVAZAAR(
+    const char *,
+    const char *,
+    YUV_FORMAT ,
+    const int32_t ,
+    const int32_t ,
+    const int32_t ,
+    const int32_t ,
+    const char *,
+    const char *,
     const char *);
 
 long encodeHM(
