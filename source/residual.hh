@@ -160,7 +160,9 @@ long encodeKVAZAAR(
     const int32_t ,
     const char *,
     const char *,
-    const char *);
+    const char *,
+    const int32_t gopsize,
+    const int32_t iperiod);
 
 long encodeHM(
     const char *input444,
@@ -172,7 +174,9 @@ long encodeHM(
     const int32_t nc,
     const char *outputYUV,
     const char *,
-    const char *);
+    const char *,
+    const int32_t gopsize,
+    const int32_t iperiod);
 
 void getJP2Header(
     uint8_t *JP2, 

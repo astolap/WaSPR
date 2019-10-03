@@ -570,73 +570,66 @@ void decoder::decode_views() {
         if ((LF + view_indices.at(0))->has_color_residual) {
 
             /*make scan order "serpent" in vector "hevc_i_order" */
+            std::vector<int32_t> hevc_i_order =
+                getScanOrder(LF, view_indices);
 
-            int32_t maxr = 0, maxc = 0;
+            /*padding to mincusize*/
+
+            const int32_t mincusize = 8;
+
+            const int32_t VERP = (mincusize - LF->nr%mincusize);
+            const int32_t HORP = (mincusize - LF->nc%mincusize);
+
+            int32_t nr1 = LF->nr + VERP;
+            int32_t nc1 = LF->nc + HORP;
+
+            view *SAI0 = LF + hevc_i_order.at(0);
+
+            int32_t status = decodeHM(
+                SAI0->hevc_texture,
+                SAI0->decoder_raw_output_YUV,
+                setup.hm_decoder.c_str());
+
+            /*convert (any YUV format) -> YUV444 */
+
+            std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
+                SAI0->decoder_raw_output_YUV,
+                hlevel > 1 ? YUVTYPE : (nc_color_ref > 1 ? YUV420 : YUV400),
+                nr1,
+                nc1,
+                hevc_i_order.size());
+
             for (int32_t ii = 0; ii < view_indices.size(); ii++) {
 
-                std::vector<int32_t> hevc_i_order =
-                    getScanOrder(LF, view_indices);
+                view *SAI = LF + hevc_i_order.at(ii);
 
-                /*padding to mincusize*/
+                if (SAI->has_color_residual) {
 
-                const int32_t mincusize = 8;
+                    uint16_t *cropped = cropImage_for_HM(
+                        YUV444_dec.at(ii).data(),
+                        nr1,
+                        nc1,
+                        SAI->ncomp,
+                        HORP,
+                        VERP);
 
-                const int32_t VERP = (mincusize - LF->nr%mincusize);
-                const int32_t HORP = (mincusize - LF->nc%mincusize);
+                    aux_write16PGMPPM(
+                        SAI->path_raw_texture_residual_at_decoder_ppm,
+                        SAI->nc,
+                        SAI->nr,
+                        SAI->ncomp,
+                        cropped);
 
-                int32_t nr1 = LF->nr + VERP;
-                int32_t nc1 = LF->nc + HORP;
-
-                view *SAI0 = LF + hevc_i_order.at(0);
-
-                int32_t status = decodeHM(
-                    SAI0->hevc_texture,
-                    SAI0->decoder_raw_output_YUV,
-                    setup.hm_decoder.c_str());
-
-                /*convert (any YUV format) -> YUV444 */
-
-                std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
-                    SAI0->decoder_raw_output_YUV,
-                    hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV420 : YUV400),
-                    nr1,
-                    nc1,
-                    hevc_i_order.size());
-
-                /* write PPM back to correct places, YUV444 -> .ppm */
-
-                for (int32_t ii = 0; ii < view_indices.size(); ii++) {
-
-                    view *SAI = LF + hevc_i_order.at(ii);
-
-                    if (SAI->has_color_residual) {
-
-                        uint16_t *cropped = cropImage_for_HM(
-                            YUV444_dec.at(ii).data(),
-                            nr1,
-                            nc1,
-                            SAI->ncomp,
-                            HORP,
-                            VERP);
-
-                        aux_write16PGMPPM(
-                            SAI->path_raw_texture_residual_at_decoder_ppm,
-                            SAI->nc,
-                            SAI->nr,
-                            SAI->ncomp,
-                            cropped);
-
-                        delete[](cropped);
-
-                    }
+                    delete[](cropped);
 
                 }
 
-                /* ------------------------------
-                TEXTURE RESIDUAL DECODING ENDS
-                ------------------------------*/
-
             }
+
+            /* ------------------------------
+            TEXTURE RESIDUAL DECODING ENDS
+            ------------------------------*/
+
         }
     }
 

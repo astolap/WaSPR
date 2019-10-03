@@ -1139,7 +1139,13 @@ void encoder::generate_texture() {
                 const int32_t,
                 const char *,
                 const char *,
-                const char *);
+                const char *,
+                const int32_t,
+                const int32_t);
+
+            /*not used by HM*/
+            int32_t gopsize = 0;
+            int32_t iperiod = 0;
 
             if (USE_KVAZAAR) {
 
@@ -1177,6 +1183,11 @@ void encoder::generate_texture() {
                         SAI0->encoder_raw_output_444);
 
                 }
+                if (SAI0->level > 1)
+                {
+                    gopsize = 8;
+                    iperiod = 8;
+                }
 
             }
             else
@@ -1204,7 +1215,9 @@ void encoder::generate_texture() {
                         nr1,
                         SAI0->decoder_raw_output_YUV,
                         setup.hm_encoder.c_str(),
-                        setup.hm_cfg.c_str()); /*transpose for nr,nc*/
+                        setup.hm_cfg.c_str(),
+                        gopsize,
+                        iperiod); /*transpose for nr,nc*/
 
                     double bpphevc =
                         double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
@@ -1254,7 +1267,9 @@ void encoder::generate_texture() {
                 nr1,
                 SAI0->decoder_raw_output_YUV,
                 setup.hm_encoder.c_str(),
-                setup.hm_cfg.c_str()); /*transpose for nr,nc*/
+                setup.hm_cfg.c_str(),
+                gopsize,
+                iperiod); /*transpose for nr,nc*/
 
             double bpphevc =
                 double(bytes_hevc * 8) / double((LF->nr*LF->nc*view_indices.size()));
@@ -1266,9 +1281,7 @@ void encoder::generate_texture() {
                 view *SAI = LF + hevc_i_order.at(ii);
 
                 SAI->finalQP = QPfinal;
-
                 SAI->real_rate_texture = bpphevc;
-
                 SAI->QP_range = SAI0->QP_range;
                 SAI->bpp_range = SAI0->bpp_range;
 

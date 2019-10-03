@@ -662,7 +662,9 @@ long encodeHM(
     const int32_t nc,
     const char *outputYUV,
     const char *hm_encoder,
-    const char *input_cfg) {
+    const char *input_cfg,
+    const int32_t gopsize,
+    const int32_t iperiod) {
 
 
     aux_ensure_directory(input444);
@@ -731,7 +733,9 @@ long encodeKVAZAAR(
     const int32_t nc,
     const char *outputYUV,
     const char *hm_encoder,
-    const char *input_cfg) {
+    const char *input_cfg,
+    const int32_t gopsize,
+    const int32_t iperiod) {
 
     aux_ensure_directory(input444);
     aux_ensure_directory(output_hevc);
@@ -765,9 +769,12 @@ long encodeKVAZAAR(
         " --input-res %dx%d"
         " --range pc"
         " --preset slower"
-        " --period 1"
-        " --gop 0"
-        " --input-bitdepth %d",
+        " --gop %d"
+        " --period %d"
+        " --input-bitdepth %d"
+        " --rd 1"
+        " --me tz"
+        " --ref 15",
         kvazaar_encoder,
         input444,
         output_hevc,
@@ -777,6 +784,8 @@ long encodeKVAZAAR(
         QP,
         nc,
         nr,
+        gopsize,
+        iperiod,
         10);
 
     int32_t status = system_1(kva_call);
