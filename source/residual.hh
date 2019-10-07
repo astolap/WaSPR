@@ -30,8 +30,6 @@
 #define YUVTYPE YUV400
 #define YUVTYPE_1LEVEL YUV400
 
-#define USE_KVAZAAR true
-
 #include <cstdint>
 
 using std::int32_t;

@@ -51,6 +51,15 @@ encoder::encoder(const WaSPsetup encoder_setup)
 
     setup = encoder_setup;
 
+    if (setup.kvazaarpath.length() > 0)
+    {
+        USE_KVAZAAR = true;
+    }
+    if (setup.gzipath.length() > 0)
+    {
+        USE_DEFLATE = true;
+    }
+
     load_config_json(setup.config_file);
 
 }
@@ -70,7 +79,18 @@ void encoder::write_statsfile() {
 
     nlohmann::json conf_out;
 
-    conf_out["type"] = "WaSP";
+    conf_out["USE_DEFLATE"] = USE_DEFLATE;
+    conf_out["USE_KVAZAAR"] = USE_KVAZAAR;
+
+    conf_out["hmencoder"] = setup.hm_encoder;
+    conf_out["hmdecoder"] = setup.hm_decoder;
+    conf_out["kvazaar"] = setup.kvazaarpath;
+    conf_out["kvazaar"] = setup.gzipath;
+    conf_out["hm_cfg"] = setup.hm_cfg;
+    conf_out["subsampling"] = setup.sparse_subsampling;
+    conf_out["out"] = setup.output_directory;
+    conf_out["in"] = setup.input_directory;
+    conf_out["config"] = setup.config_file;
 
     conf_out["n_seg_iterations"] = n_seg_iterations;
 
@@ -949,23 +969,23 @@ void encoder::generate_texture() {
 
                     delete[](sp_filtered_image_padded);
 
-                    double psnr_without_sparse = PSNR(
-                        original_color_view,
-                        SAI->color,
-                        SAI->nr,
-                        SAI->nc,
-                        nc_sparse,
-                        (1 << 10) - 1);
+                    //double psnr_without_sparse = PSNR(
+                    //    original_color_view,
+                    //    SAI->color,
+                    //    SAI->nr,
+                    //    SAI->nc,
+                    //    nc_sparse,
+                    //    (1 << 10) - 1);
 
-                    double psnr_with_sparse = PSNR(
-                        original_color_view,
-                        sp_filtered_image.data(),
-                        SAI->nr,
-                        SAI->nc,
-                        nc_sparse,
-                        (1 << bpc) - 1);
+                    //double psnr_with_sparse = PSNR(
+                    //    original_color_view,
+                    //    sp_filtered_image.data(),
+                    //    SAI->nr,
+                    //    SAI->nc,
+                    //    nc_sparse,
+                    //    (1 << bpc) - 1);
 
-                    if (psnr_with_sparse > psnr_without_sparse) {
+                    //if (psnr_with_sparse > psnr_without_sparse) {
 
                         memcpy(
                             SAI->color,
@@ -974,7 +994,7 @@ void encoder::generate_texture() {
 
                         SAI->use_global_sparse = true;
 
-                    }
+                    //}
 
                     delete[](original_color_view);
 
@@ -1524,18 +1544,65 @@ void encoder::write_bitstream() {
         1,
         output_LF_file) * sizeof(int32_t);
 
+    uint8_t usedeflate = USE_DEFLATE;
+    n_bytes_prediction += (uint32_t)fwrite(
+        &usedeflate,
+        sizeof(uint8_t),
+        1,
+        output_LF_file) * sizeof(uint8_t);
+
+    if (USE_DEFLATE)
+    {
+
+        printf("Encoding view parameters with deflate\n");
+
+        viewParametersConstruct vpcon(
+            LF,
+            n_views_total,
+            setup.gzipath,
+            setup.output_directory + "/viewparams",
+            "encode");
+
+        long ndeflatebytes = aux_GetFileSize(setup.output_directory + "/viewparams.gz");
+
+        uint32_t deflb32 = static_cast<uint32_t>(ndeflatebytes);
+
+        std::vector<uint8_t> deflatebytes(deflb32, 0);
+
+        FILE *inputfile;
+        inputfile = fopen((setup.output_directory + "/viewparams.gz").c_str(), "rb");
+        fread(deflatebytes.data(), sizeof(uint8_t), deflatebytes.size(), inputfile);
+        fclose(inputfile);
+
+        fwrite(&deflb32,
+            sizeof(uint32_t),
+            1,
+            output_LF_file);
+
+        fwrite(
+            deflatebytes.data(),
+            sizeof(uint8_t),
+            deflatebytes.size(),
+            output_LF_file);
+
+    }
+
     std::vector< bool > levels_already_written_to_codestream(maxh, 0);
 
     for (int32_t ii = 0; ii < n_views_total; ii++) {
 
         view *SAI = LF + ii;
 
-        printf("Writing codestream for view %03d_%03d\n", SAI->c, SAI->r);
+        
 
-        viewHeaderToCodestream(
-            n_bytes_prediction,
-            SAI,
-            output_LF_file);
+        if (!USE_DEFLATE)
+        {
+            printf("Writing codestream for view %03d_%03d\n", SAI->c, SAI->r);
+            viewHeaderToCodestream(
+                n_bytes_prediction,
+                SAI,
+                output_LF_file);
+        }
 
         if (SAI->has_color_residual) {
             if (!levels_already_written_to_codestream.at(SAI->level - 1)) {

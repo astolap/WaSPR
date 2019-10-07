@@ -402,7 +402,7 @@ void getViewMergingLSWeights_icomp(
         for (int32_t ii = 0; ii < M; ii++) {
             double quant_theta = floor(*(PredTheta0 + ii) * static_cast<double>(1 << BIT_DEPTH_MERGE) + 0.5);
             double max_t_val = static_cast<double>((1 << (16 - 1)));
-            quant_theta = quant_theta > max_t_val ? max_t_val : quant_theta;
+            quant_theta = quant_theta > max_t_val-1 ? max_t_val-1 : quant_theta;
             quant_theta = quant_theta < -max_t_val ? -max_t_val : quant_theta;
             thetas[ij + MMM * iks[PredRegr0[ii]]] = static_cast<int16_t>(quant_theta);  // pow(2, BIT_DEPTH_MERGE) + 0.5);
         }

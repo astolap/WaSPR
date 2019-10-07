@@ -61,6 +61,8 @@ private:
 
     bool use_color_transform = false;
 
+    bool USE_DEFLATE = false;
+
     WaSPsetup setup;
 
     view* LF = nullptr;
@@ -74,6 +76,8 @@ private:
     void dealloc();
 
 protected:
+
+    void write_statsfile();
     void decode_header();
     void decode_views();
 

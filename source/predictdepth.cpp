@@ -44,11 +44,17 @@ using std::uint16_t;
 using std::int8_t;
 using std::uint8_t;
 
-void WaSP_predict_depth(view* SAI, view *LF) {
+void WaSP_predict_depth(
+    view* SAI,
+    view *LF)
+{
     /* forward warp depth */
     if (SAI->n_depth_references > 0) {
 
-        printf("Predicting normalized disparity for view %03d_%03d\n", SAI->c, SAI->r);
+        printf(
+            "Predicting normalized disparity for view %03d_%03d\n",
+            SAI->c,
+            SAI->r);
 
         uint16_t **warped_texture_views_0_N =
             new uint16_t*[SAI->n_depth_references]();
@@ -67,6 +73,7 @@ void WaSP_predict_depth(view* SAI, view *LF) {
             SAI->ncomp);
 
         for (int32_t ij = 0; ij < SAI->n_depth_references; ij++) {
+
             view *ref_view = LF + SAI->depth_references[ij];
 
             int32_t tmp_w, tmp_r, tmp_ncomp;

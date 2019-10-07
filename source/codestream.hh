@@ -42,6 +42,83 @@ using std::uint16_t;
 using std::int8_t;
 using std::uint8_t;
 
+class viewParametersConstruct {
+
+private:
+
+    std::vector<uint8_t> rawbytes; /*stores LF parameters as bytes*/
+
+    const std::string gzippath;
+    const std::string rawfile;
+    const std::string mode;
+
+    view *LF;
+    int32_t nviews;
+
+    uint8_t *dec_iter;
+
+    void convertLFtoBytes(); /*from LF to rawbytes*/
+    void convertBytesToLF(); /*from rawbytes to LF*/
+
+    template<class T1>
+    void addRawBytes(T1 datai)
+    {
+        std::vector<uint8_t> bytesi(sizeof(T1), 0);
+        memcpy(bytesi.data(), &datai, sizeof(T1));
+        rawbytes.insert(rawbytes.end(), bytesi.begin(), bytesi.end());
+    }
+
+    template<class T1>
+    void getRawBytes(T1 &dataout)
+    {
+        memcpy(&dataout, dec_iter, sizeof(T1));
+        dec_iter += sizeof(T1);
+    }
+
+    void addSPM();
+    void addSPW();
+    void addSPP();
+    void addSTD();
+    void addLSW();
+
+    void addNRefs();
+    void addNNDRefs();
+
+    void addNDRefs();
+    void addRefs();
+    void addY();
+    void addX();
+    void addMconfs();
+
+    void getSPM();
+    void getSPW();
+    void getSPP();
+    void getSTD();
+    void getLSW();
+
+    void getNRefs();
+    void getNNDRefs();
+
+    void getNDRefs();
+    void getRefs();
+    void getY();
+    void getX();
+    void getMconfs();
+
+
+public:
+
+    viewParametersConstruct(
+        view *LF,
+        const int32_t nviews,
+        const std::string gzippath,
+        const std::string rawfile,
+        const std::string mode);
+
+    ~viewParametersConstruct();
+
+};
+
 void viewHeaderToCodestream(
     int32_t &n_bytes_prediction, 
     view *SAI,
@@ -50,7 +127,6 @@ void viewHeaderToCodestream(
 void codestreamToViewHeader(
     int32_t &n_bytes_prediction, 
     view *SAI, 
-    FILE *input_LF,
-    minimal_config &mconf);
+    FILE *input_LF);
 
 #endif

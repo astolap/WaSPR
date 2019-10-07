@@ -47,10 +47,13 @@ struct WaSPsetup {
     string output_directory;
     string wasp_kakadu_directory;
 
+    string kvazaarpath;
+    string gzipath;
+
     /*encoder side only*/
     string config_file;
     string stats_file;
-    int32_t sparse_subsampling; 
+    int32_t sparse_subsampling = 1; 
 
     /*HM specific*/
     string hm_encoder;

@@ -73,6 +73,9 @@ class encoder {
 
   bool STD_SEARCH = false;
 
+  bool USE_KVAZAAR = false;
+  bool USE_DEFLATE = false;
+
   std::string colorspace_LF;
 
   uint8_t nc_sparse, nc_merge, nc_color_ref, n_seg_iterations;

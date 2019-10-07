@@ -29,7 +29,10 @@
 #include <cstring>
 #include <cmath>
 #include <numeric>
+#include <fstream>
+#include <iomanip>
 
+#include "json.hh"
 #include "decoder.hh"
 #include "view.hh"
 #include "minconf.hh"
@@ -57,6 +60,7 @@ decoder::decoder(const WaSPsetup decoder_setup)
 }
 
 decoder::~decoder() {
+
     if (LF != nullptr) {
         dealloc();
     }
@@ -64,8 +68,73 @@ decoder::~decoder() {
 }
 
 void decoder::decode() {
+
     decode_header();
     decode_views();
+    write_statsfile();
+}
+
+void decoder::write_statsfile() {
+
+    nlohmann::json conf_out;
+
+    conf_out["USE_DEFLATE"] = USE_DEFLATE;
+    //conf_out["USE_KVAZAAR"] = USE_KVAZAAR;
+
+    conf_out["hmencoder"] = setup.hm_encoder;
+    conf_out["hmdecoder"] = setup.hm_decoder;
+    conf_out["kvazaar"] = setup.kvazaarpath;
+    conf_out["kvazaar"] = setup.gzipath;
+    conf_out["hm_cfg"] = setup.hm_cfg;
+    conf_out["subsampling"] = setup.sparse_subsampling;
+    conf_out["out"] = setup.output_directory;
+    conf_out["in"] = setup.input_directory;
+    conf_out["config"] = setup.config_file;
+
+    conf_out["n_seg_iterations"] = n_seg_iterations;
+
+    vector<nlohmann::json::object_t> views;
+
+    for (int32_t ii = 0; ii < number_of_views; ii++) {
+
+        view *SAI = LF + ii;
+
+        nlohmann::json view_configuration;
+
+        view_configuration["column_index"] = SAI->c;
+        view_configuration["row_index"] = SAI->r;
+        view_configuration["index"] = SAI->i_order;
+        view_configuration["level"] = SAI->level;
+        view_configuration["finalQP"] = SAI->finalQP;
+
+        view_configuration["NNt"] = SAI->NNt;
+        view_configuration["Ms"] = SAI->Ms;
+
+        view_configuration["num_of_sparse_filters"] = SAI->sparse_filters.size();
+
+        view_configuration["QP_range"] = SAI->QP_range;
+        view_configuration["bpp_range"] = SAI->bpp_range;
+
+        view_configuration["real_bpp_texture"] = SAI->real_rate_texture;
+        view_configuration["real_bpp_normdisp"] = SAI->real_rate_normpdisp;
+
+        for (int32_t ij = 0; ij < SAI->sparse_filters.size(); ij++) {
+            view_configuration[std::string("sp_qcoeffs_" + std::to_string(ij)).c_str()] =
+                SAI->sparse_filters.at(ij).quantized_filter_coefficients;
+            view_configuration[std::string("sp_regr_indices_" + std::to_string(ij)).c_str()] =
+                SAI->sparse_filters.at(ij).regressor_indexes;
+        }
+
+        views.push_back(view_configuration);
+
+    }
+
+    conf_out["views"] = views;
+
+    std::ofstream file(setup.stats_file);
+
+    file << std::setw(2) << conf_out << std::endl;
+
 }
 
 void decoder::decode_header() {
@@ -121,31 +190,47 @@ void decoder::decode_header() {
         &nc_sparse,
         sizeof(uint8_t),
         1,
-        input_LF) * sizeof(int32_t);
+        input_LF) * sizeof(uint8_t);
 
     n_bytes_prediction += (int32_t)fread(
         &nc_merge,
         sizeof(uint8_t),
         1,
-        input_LF) * sizeof(int32_t);
+        input_LF) * sizeof(uint8_t);
 
     n_bytes_prediction += (int32_t)fread(
         &SP_B,
         sizeof(uint8_t),
         1,
-        input_LF) * sizeof(int32_t);
+        input_LF) * sizeof(uint8_t);
 
     n_bytes_prediction += (int32_t)fread(
         &nc_color_ref,
         sizeof(uint8_t),
         1,
-        input_LF) * sizeof(int32_t);
+        input_LF) * sizeof(uint8_t);
 
     n_bytes_prediction += (int32_t)fread(
         &n_seg_iterations,
         sizeof(uint8_t),
         1,
-        input_LF) * sizeof(int32_t);
+        input_LF) * sizeof(uint8_t);
+
+    uint8_t usedeflate = 0;
+
+    n_bytes_prediction += (uint32_t)fread(
+        &usedeflate,
+        sizeof(uint8_t),
+        1,
+        input_LF) * sizeof(uint8_t);
+
+    USE_DEFLATE = usedeflate;
+
+    if (USE_DEFLATE && (setup.gzipath.length() == 0) )
+    {
+        printf("\nDEFLATE used but gzip path not set. Quitting ...\n");
+        exit(0);
+    }
 
 }
 
@@ -484,20 +569,13 @@ void decoder::decode_views() {
 
     LF = new view[number_of_views]();
 
-    int32_t ii = 0; /*view index*/
-
-
-    std::vector<bool> levels_already_written_to_codestream;
-
-    while (ii < number_of_views) {
+    for (uint32_t ii = 0; ii < number_of_views; ii++) {
 
         view *SAI = LF + ii;
-        ii++;
 
         initView(SAI);
 
-        SAI->i_order = ii-1;
-
+        SAI->i_order = ii;
         SAI->nr = number_of_rows;
         SAI->nc = number_of_columns;
         SAI->colorspace = colorspace_LF;
@@ -508,14 +586,52 @@ void decoder::decode_views() {
         if (minimum_depth > 0) {
             SAI->min_inv_d = static_cast<int32_t>(minimum_depth);
         }
+    }
 
-        minimal_config mconf;
+    if (USE_DEFLATE)
+    {
 
-        codestreamToViewHeader(
-            n_bytes_prediction,
-            SAI,
-            input_LF,
-            mconf);
+        uint32_t ndeflatebytes = 0;
+
+        fread(&ndeflatebytes,
+            sizeof(uint32_t),
+            1,
+            input_LF);
+
+        std::vector<uint8_t> deflatebytes(ndeflatebytes, 0);
+
+        fread(
+            deflatebytes.data(),
+            sizeof(uint8_t),
+            deflatebytes.size(),
+            input_LF);
+
+        FILE *outputfile;
+        outputfile = fopen((setup.output_directory + "/viewparams.gz").c_str(), "wb");
+        fwrite(deflatebytes.data(), sizeof(uint8_t), deflatebytes.size(), outputfile);
+        fclose(outputfile);
+
+        viewParametersConstruct vpcon(
+            LF,
+            number_of_views,
+            setup.gzipath,
+            setup.output_directory + "/viewparams",
+            "decode");
+
+    }
+
+    std::vector<bool> levels_already_written_to_codestream;
+
+    for (uint32_t ii = 0; ii < number_of_views; ii++){
+
+        view *SAI = LF + ii;
+
+        if (!USE_DEFLATE) {
+            codestreamToViewHeader(
+                n_bytes_prediction,
+                SAI,
+                input_LF);
+        }
 
         setPaths(
             SAI,
@@ -633,11 +749,10 @@ void decoder::decode_views() {
         }
     }
 
-    ii = 0; /*view index*/
-    while (ii < number_of_views) {
+    for (uint32_t ii = 0; ii < number_of_views; ii++)
+    {
 
         view *SAI = LF + ii;
-        ii++;
 
         printf("Decoding view %03d_%03d\n", SAI->c, SAI->r);
 

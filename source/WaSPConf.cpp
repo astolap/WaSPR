@@ -49,10 +49,6 @@ WaSPConfig::~WaSPConfig() {
 
 bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
 
-    if (argc > 9) {
-        return false;
-    }
-
     for (int32_t ii = 1; ii < argc - 1; ii += 2) {
 
         if (!strcmp(argv[ii], "-i")) {
@@ -87,6 +83,16 @@ bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
             WaSP_setup.hm_decoder = std::string(argv[ii + 1]);
         }
 
+        else if (!strcmp(argv[ii], "--kvazaar-path")) {
+            WaSP_setup.kvazaarpath = std::string(argv[ii + 1]);
+
+        }
+
+        else if (!strcmp(argv[ii], "--gzip-path")) {
+            WaSP_setup.gzipath = std::string(argv[ii + 1]);
+
+        }
+
         else {
             return false;
         }
@@ -113,6 +119,8 @@ bool WaSPConfig::parseCommandLine_decoder(int argc, char *argv[]) {
         return false;
     }
 
+    WaSP_setup.stats_file = WaSP_setup.output_directory + "/stats.json";
+
     return true;
 
 }
@@ -124,7 +132,10 @@ void WaSPConfig::print_encoder_help() {
         "\n\t--config [JSON CONFIG]"
         "\n\t--kakadu [KAKADU BINARY DIRECTORY]"
         "\n\t--TAppEncoder [Path to TAppEncoder executable]"
+        "\n\t--TAppDecoder [Path to TAppDecoder executable]"
         "\n\t--HEVCcfg [Path to TAppEncoder config file]"
+        "\n\t--kvazaar-path [path to Kvazaar binary]"
+        "\n\t--gzip-path [path to gzip binary]"
         "\n\t--sparse_subsampling [Subsampling factor when solving sparse filter,"
         " needs to be integer >0. Values 2 or 4 will increase encoder speed with some loss in PSNR.]\n\n");
     return;
@@ -135,7 +146,9 @@ void WaSPConfig::print_decoder_help() {
         "\n\t--input [INPUT .LF]"
         "\n\t--output [OUTPUT DIRECTORY .PPM/.PGM]"
         "\n\t--kakadu [KAKADU BINARY DIRECTORY]"
-        "\n\t--TAppDecoder [Path to TAppDecoder executable]\n\n");
+        "\n\t--TAppDecoder [Path to TAppDecoder executable]"
+        "\n\t--kvazaar-path [path to Kvazaar binary]"
+        "\n\t--gzip-path [path to gzip binary]\n\n");
     return;
 }
 
@@ -229,6 +242,16 @@ bool WaSPConfig::parseCommandLine_encoder(int argc, char *argv[]) {
 
         else if (!strcmp(argv[ii], "--HEVCcfg")) {
             WaSP_setup.hm_cfg = std::string(argv[ii + 1]);
+
+        }
+
+        else if (!strcmp(argv[ii], "--kvazaar-path")) {
+            WaSP_setup.kvazaarpath = std::string(argv[ii + 1]);
+
+        }
+
+        else if (!strcmp(argv[ii], "--gzip-path")) {
+            WaSP_setup.gzipath = std::string(argv[ii + 1]);
 
         }
 
