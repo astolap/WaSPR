@@ -693,8 +693,10 @@ void decoder::decode_views() {
 
             const int32_t mincusize = 8;
 
-            const int32_t VERP = (mincusize - LF->nr%mincusize);
-            const int32_t HORP = (mincusize - LF->nc%mincusize);
+            const int32_t VERP = mincusize*((LF->nr % mincusize) ?
+                LF->nr / mincusize + 1 : LF->nr / mincusize )- LF->nr;
+            const int32_t HORP = mincusize*((LF->nc % mincusize) ?
+                LF->nc / mincusize + 1 : LF->nc / mincusize) - LF->nc;
 
             int32_t nr1 = LF->nr + VERP;
             int32_t nc1 = LF->nc + HORP;

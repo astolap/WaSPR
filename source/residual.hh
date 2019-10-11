@@ -28,7 +28,6 @@
 #define RESIDUAL_HH
 
 #define YUVTYPE YUV400
-#define YUVTYPE_1LEVEL YUV400
 
 #include <cstdint>
 

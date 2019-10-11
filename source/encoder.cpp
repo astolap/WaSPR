@@ -1097,8 +1097,12 @@ void encoder::generate_texture() {
 
             const int32_t mincusize = 8;
 
-            const int32_t VERP = (mincusize - LF->nr%mincusize);
-            const int32_t HORP = (mincusize - LF->nc%mincusize);
+           // const int32_t VERP = (mincusize - LF->nr%mincusize);
+            //const int32_t HORP = (mincusize - LF->nc%mincusize);
+            const int32_t VERP = mincusize*((LF->nr % mincusize) ? 
+                LF->nr / mincusize + 1 : LF->nr / mincusize )- LF->nr;
+            const int32_t HORP = mincusize*((LF->nc % mincusize) ? 
+                LF->nc / mincusize + 1 : LF->nc / mincusize) - LF->nc;
 
             int32_t nr1 = LF->nr + VERP;
             int32_t nc1 = LF->nc + HORP;
@@ -1165,7 +1169,7 @@ void encoder::generate_texture() {
 
             /*not used by HM*/
             int32_t gopsize = 0;
-            int32_t iperiod = 0;
+            int32_t iperiod = 1;
 
             if (USE_KVAZAAR) {
 
@@ -1205,8 +1209,8 @@ void encoder::generate_texture() {
                 }
                 if (SAI0->level > 1)
                 {
-                    gopsize = 8;
-                    iperiod = 8;
+                    //gopsize = 8;
+                    //iperiod = 8;
                 }
 
             }
