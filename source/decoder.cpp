@@ -84,7 +84,7 @@ void decoder::write_statsfile() {
     conf_out["hmencoder"] = setup.hm_encoder;
     conf_out["hmdecoder"] = setup.hm_decoder;
     conf_out["kvazaar"] = setup.kvazaarpath;
-    conf_out["kvazaar"] = setup.gzipath;
+    conf_out["gzip"] = setup.gzipath;
     conf_out["hm_cfg"] = setup.hm_cfg;
     conf_out["subsampling"] = setup.sparse_subsampling;
     conf_out["out"] = setup.output_directory;
@@ -683,7 +683,15 @@ void decoder::decode_views() {
             }
         }
 
-        if ((LF + view_indices.at(0))->has_color_residual) {
+        bool texture_residual_for_level = false;
+        for (int32_t iii = 0; iii < view_indices.size(); iii++) {
+            if ((LF + view_indices.at(iii))->has_color_residual) {
+                texture_residual_for_level = true;
+                break;
+            }
+        }
+
+        if (texture_residual_for_level) {
 
             /*make scan order "serpent" in vector "hevc_i_order" */
             std::vector<int32_t> hevc_i_order =
@@ -712,7 +720,7 @@ void decoder::decode_views() {
 
             std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
                 SAI0->decoder_raw_output_YUV,
-                hlevel > 1 ? YUVTYPE : (nc_color_ref > 1 ? YUV420 : YUV400),
+                hlevel > 1 ? YUVTYPE : (nc_color_ref > 1 ? YUV444 : YUV400),
                 nr1,
                 nc1,
                 hevc_i_order.size());

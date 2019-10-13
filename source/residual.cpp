@@ -318,7 +318,7 @@ std::vector<std::vector<uint16_t>> readYUV444_seq_from_disk(
 
         std::vector<uint16_t> frame(
             YUV444_seq_data.begin() + starti,
-            YUV444_seq_data.begin() + starti + nr*nc*3 - 1);
+            YUV444_seq_data.begin() + starti + nr*nc*3);
 
         YUV444_seq.push_back(frame);
 
@@ -336,7 +336,7 @@ std::vector<std::vector<uint16_t>> readYUV420_seq_from_disk(
 
     FILE *input_420_file = fopen(input_420, "rb");
 
-    const int32_t np = nframes*(nr*nc + 2*nr/2*nc/2);
+    const int32_t np = nframes*(nr*nc + 2 * (nr / 2 )*(nc / 2));
 
     std::vector<std::vector<uint16_t>> YUV420_seq;
     std::vector<uint16_t> YUV420_seq_data(np, 0);
@@ -351,11 +351,11 @@ std::vector<std::vector<uint16_t>> readYUV420_seq_from_disk(
 
     for (int32_t fr = 0; fr < nframes; fr++) {
 
-        int32_t starti = (nr*nc + nr/2*nc/2*2)*fr;
+        int32_t starti = (nr*nc + 2 * (nr / 2  )*(nc / 2) )*fr;
 
         std::vector<uint16_t> frame(
             YUV420_seq_data.begin() + starti,
-            YUV420_seq_data.begin() + starti + nr*nc + 2*nr/2*nc/2);
+            YUV420_seq_data.begin() + starti + nr*nc + 2*(nr/2)*(nc/2) );
 
         YUV420_seq.push_back(frame);
 
@@ -456,9 +456,30 @@ std::vector<uint16_t> upscale(
             int32_t lindx_in = row/rz + (col/rz)*nr;
 
             output.at(lindx_out) = input.at(lindx_in);
-            output.at(lindx_out+1) = input.at(lindx_in);
-            output.at(lindx_out+nr*rz) = input.at(lindx_in);
-            output.at(lindx_out+1+nr*rz) = input.at(lindx_in);
+
+            if (row < nr*rz - 2) {
+                output.at(lindx_out + 1) = (input.at(lindx_in) + input.at(lindx_in+1))/2;
+            }
+            else {
+                output.at(lindx_out + 1) = input.at(lindx_in);
+            }
+            if (col < nc*rz - 2) {
+                output.at(lindx_out + nr*rz) = (input.at(lindx_in) + input.at(lindx_in + nr)) / 2;
+            }
+            else {
+                output.at(lindx_out + nr*rz) = input.at(lindx_in);
+            }
+            if (row < nr*rz - 2 && col < nc*rz - 2) {
+                output.at(lindx_out + 1+ nr*rz) = (input.at(lindx_in) + input.at(lindx_in+ 1+ nr)) / 2;
+            }
+            else {
+                output.at(lindx_out + 1 + nr*rz) = input.at(lindx_in);
+            }
+           
+           
+            
+
+
 
 
         }

@@ -117,7 +117,10 @@ void RGB2YCbCr(
       double rd = floor(*(ycbcrD + ii + icomp * nr * nc) + 0.5);
 
       *(ycbcr + ii + icomp * nr * nc) =
-          static_cast<uint16_t>(clip(rd,0.0,double(clipval)));
+          static_cast<uint16_t>(rd);
+
+      //*(ycbcr + ii + icomp * nr * nc) =
+      //    static_cast<uint16_t>(clip(rd,0.0,double(clipval)));
     }
 
   }

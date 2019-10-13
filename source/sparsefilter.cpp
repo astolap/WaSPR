@@ -176,8 +176,6 @@ void applyGlobalSparseFilter_vec_reg(
 
     double Q = ((double)(1 << BIT_DEPTH) - 1);
 
-    const uint16_t *input_image = input_images.at(0).data();
-
     for (int32_t rr = NNt; rr < nr - NNt; rr++) {
         for (int32_t cc = NNt; cc < nc - NNt; cc++) {
 

@@ -24,6 +24,10 @@
 *     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define ARMA_NO_DEBUG
+
+#include "armadillo"
+
 #include "fastols.hh"
 
 int32_t FastOLS_new(
@@ -44,66 +48,52 @@ int32_t FastOLS_new(
   double *AA = *AAA;
   double *Yd = *Ydd;
 
+  arma::mat AAa(N, MT);
+  arma::mat Yda(N, 1);
+
+  for (int ii = 0; ii < N; ii++) {
+      Yda.at(ii) = *(Yd + ii);
+      for (int ij = 0; ij < MT; ij++) {
+          AAa.at(ii, ij) = *(AA + ii + ij*N);
+      }
+  }
+
+  arma::mat AAaT = AAa.t();
+
+  arma::mat PHIa = AAaT*AAa;
+  arma::mat PSIa = AAaT*Yda;
+
   double *PHI = new double[MT * MT]();
   double *PSI = new double[MT]();
+
+  for (int ij = 0; ij < MT; ij++) {
+      *(PSI + ij) = PSIa.at(ij);
+      for (int ii = 0; ii < MT; ii++) {
+          *(PHI + ij + ii*MT) = PHIa.at(ij, ii);
+      }
+  }
+
+
 
   //int32_t startt = clock();
 
   /* make ATA. this is slow. */
-  for (int32_t i1 = 0; i1 < MT; i1++) {
-#pragma omp parallel for shared(i1)
-    for (int32_t j1 = 0; j1 < MT; j1++) {
-      for (int32_t ii = 0; ii < N; ii++) {
-        *(PHI + i1 + j1 * MT) += (*(AA + ii + i1 * N)) * (*(AA + ii + j1 * N));
-      }
-    }
-  }
-
-  ///* try ATA with simple SSE optimization, down to around 9sec for 1080p*/
-  //double* result = (double*)_aligned_malloc(2 * sizeof(double), 16);
-
-  //__m128d x, y, z;
-
-  //for (int32_t i1 = 0; i1 < MT; i1++) {
-  //	for (int32_t j1 = 0; j1 < MT; j1++) {
-  //		int32_t ii = 0;
-  //		while (ii + 2 < N)
-  //		{
-
-  //			x = _mm_set_pd(*(AA + ii + i1*N), *(AA + ii + i1*N + 1));
-  //			y = _mm_set_pd(*(AA + ii + j1*N), *(AA + ii + j1*N + 1));
-  //			z = _mm_mul_pd(x, y);
-
-  //			_mm_store_pd(result, z);
-
-  //			*(PHI + i1 + j1*MT) += result[0] + result[1];
-
-  //			ii += 2;
-  //		}
-  //		for (int32_t ee = ii; ee < N; ee++) {
-  //			*(PHI + i1 + j1*MT) += (*(AA + ee + i1*N))*(*(AA + ee + j1*N));
-  //		}
-  //	}
-  //}
-  //_aligned_free(result);
-
-  //std::cout << "time elapsed in ATA\t" << (int32_t)clock() - startt << "\n";
-
-  //for (int32_t i1 = 0; i1 < MT; i1++){
-  //	for (int32_t j1 = 0; j1 < MT; j1++){
-  //		std::cout << *(ATA + i1 + j1*MT) << "\n";
-  //	}
-  //}
-
-  //std::cout << "------------------------------------------------\n";
+//  for (int32_t i1 = 0; i1 < MT; i1++) {
+//#pragma omp parallel for shared(i1)
+//    for (int32_t j1 = 0; j1 < MT; j1++) {
+//      for (int32_t ii = 0; ii < N; ii++) {
+//        *(PHI + i1 + j1 * MT) += (*(AA + ii + i1 * N)) * (*(AA + ii + j1 * N));
+//      }
+//    }
+//  }
 
   /* make ATYd */
 //#pragma omp parallel for
-  for (int32_t i1 = 0; i1 < MT; i1++) {
-    for (int32_t ii = 0; ii < N; ii++) {
-      *(PSI + i1) += (*(AA + ii + i1 * N)) * (*(Yd + ii));
-    }
-  }
+  //for (int32_t i1 = 0; i1 < MT; i1++) {
+  //  for (int32_t ii = 0; ii < N; ii++) {
+  //    *(PSI + i1) += (*(AA + ii + i1 * N)) * (*(Yd + ii));
+  //  }
+  //}
 
   delete[] (*AAA);
   *AAA = nullptr;
@@ -121,10 +111,7 @@ int32_t FastOLS_new(
   // Usage example: Ms= 3 says the sparsity (length of final predictor) and MT =42 tells how many regressors are available
   // Finally, MPHI = 63 tells the dimensions of the matrices, for getting linear indices in PHI
   M = MT + 1;
-  //B = alocadoubleVector(M*M);// ((M+2)*(M+2));
-  //C = alocadoubleVector(M*M);// ((M+2)*(M+2));
-  //Ag = alocadoubleVector(M*M);// ((M+2)*(M+2));
-  //g = alocadoubleVector(M);
+
 
   B = new double[M * M]();
   C = new double[M * M]();

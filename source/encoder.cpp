@@ -85,7 +85,7 @@ void encoder::write_statsfile() {
     conf_out["hmencoder"] = setup.hm_encoder;
     conf_out["hmdecoder"] = setup.hm_decoder;
     conf_out["kvazaar"] = setup.kvazaarpath;
-    conf_out["kvazaar"] = setup.gzipath;
+    conf_out["gzip"] = setup.gzipath;
     conf_out["hm_cfg"] = setup.hm_cfg;
     conf_out["subsampling"] = setup.sparse_subsampling;
     conf_out["out"] = setup.output_directory;
@@ -727,6 +727,24 @@ void encoder::generate_texture() {
             }
         }
 
+
+        bool texture_residual_for_level = false;
+        float textres = 0;
+        for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+            if ((LF + view_indices.at(ii))->residual_rate_color > 0) {
+                texture_residual_for_level = true;
+                textres = (LF + view_indices.at(ii))->residual_rate_color;
+                break;
+            }
+        }
+
+        if (texture_residual_for_level) {
+            for (int32_t ii = 0; ii < view_indices.size(); ii++) {
+                (LF + view_indices.at(ii))->has_color_residual = true;
+                (LF + view_indices.at(ii))->residual_rate_color = textres;
+            }
+        }
+
         /*ascending order of view index at level=hlevel*/
         sort(view_indices.begin(), view_indices.end());
 
@@ -776,6 +794,22 @@ void encoder::generate_texture() {
                     DispTargs);
 
                 if (SAI->Ms > 0 && SAI->NNt > 0) {
+
+                    //aux_write16PGMPPM(
+                    //    SAI->path_internal_colorspace_out_ppm,
+                    //    SAI->nc,
+                    //    SAI->nr,
+                    //    SAI->ncomp,
+                    //    SAI->color);
+
+                    //int tmp_w, tmp_r,tmp_ncomp;
+
+                    //aux_read16PGMPPM(
+                    //    SAI->path_internal_colorspace_out_ppm,
+                    //    tmp_w,
+                    //    tmp_r,
+                    //    tmp_ncomp,
+                    //    SAI->color);
         
                     /* OBTAIN SEGMENTATION*/
                     segmentation seg = makeSegmentation(SAI, n_seg_iterations);
@@ -833,12 +867,21 @@ void encoder::generate_texture() {
                             }
                         }
 
-                        uint16_t *padded_icomp_orig =
-                            padArrayUint16_t(
-                                original_color_view + SAI->nr*SAI->nc*icomp,
-                                SAI->nr,
-                                SAI->nc,
-                                SAI->NNt);
+
+                        
+
+                        std::vector<uint16_t>  padded_icomp_orig = padArrayUint16_t_vec(
+                            original_color_view + SAI->nr*SAI->nc*icomp,
+                            SAI->nr,
+                            SAI->nc,
+                            SAI->NNt);
+
+                        //uint16_t *padded_icomp_orig =
+                        //    padArrayUint16_t(
+                        //        original_color_view + SAI->nr*SAI->nc*icomp,
+                        //        SAI->nr,
+                        //        SAI->nc,
+                        //        SAI->NNt);
 
                         for (int ir = 1;
                             ir <= seg.number_of_regions;
@@ -846,7 +889,7 @@ void encoder::generate_texture() {
                         {
 
                             SAI->sparse_filters.push_back(getGlobalSparseFilter_vec_reg(
-                                padded_icomp_orig,
+                                padded_icomp_orig.data(),
                                 padded_regressors,
                                 seg.seg,
                                 ir,
@@ -858,7 +901,7 @@ void encoder::generate_texture() {
                                 setup.sparse_subsampling));
                         }
 
-                        delete[](padded_icomp_orig);
+//                        delete[](padded_icomp_orig);
 
                         /* exit(0);*/
                     }
@@ -922,8 +965,10 @@ void encoder::generate_texture() {
                                 SAI->Ms,
                                 SAI->NNt,
                                 SPARSE_BIAS_TERM,
-                                SAI->sparse_filters.at(ee++).filter_coefficients,
+                                SAI->sparse_filters.at(ee).filter_coefficients,
                                 filtered_icomp);
+
+                            ee = ee + 1;
 
                         }
 
@@ -1085,8 +1130,9 @@ void encoder::generate_texture() {
         which have texture residual rate >0,
         here we can substitute HEVC with MuLE etc*/
 
+
         /*make scan order "serpent" in vector "hevc_i_order" */
-        if ((LF + view_indices.at(0))->residual_rate_color > 0) {
+        if (texture_residual_for_level) {
 
             std::vector<int32_t> hevc_i_order =
                 getScanOrder(LF, view_indices);
@@ -1136,6 +1182,8 @@ void encoder::generate_texture() {
 
                 delete[](SAI->residual_image);
                 SAI->residual_image = nullptr;
+
+                SAI->has_color_residual = true;
 
             }
 
@@ -1232,7 +1280,7 @@ void encoder::generate_texture() {
                     long bytes_hevc = hevc_encoder(
                         SAI0->encoder_raw_output_444,
                         SAI0->hevc_texture,
-                        hlevel > 1 ? YUVTYPE: (nc_color_ref>1 ? YUV420 : YUV400),
+                        hlevel > 1 ? YUVTYPE: (nc_color_ref>1 ? YUV444 : YUV400),
                         QP,
                         YUV_444_SEQ.size(),
                         nc1,
@@ -1284,7 +1332,7 @@ void encoder::generate_texture() {
             long bytes_hevc = hevc_encoder(
                 SAI0->encoder_raw_output_444,
                 SAI0->hevc_texture,
-                hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV420 : YUV400),
+                hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV444 : YUV400),
                 QPfinal,
                 YUV_444_SEQ.size(),
                 nc1,
@@ -1331,7 +1379,7 @@ void encoder::generate_texture() {
 
             std::vector<std::vector<uint16_t>> YUV444_dec = convertYUVseqTo444(
                 SAI0->decoder_raw_output_YUV,
-                hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV420 : YUV400),
+                hlevel>1 ? YUVTYPE : (nc_color_ref>1 ? YUV444 : YUV400),
                 nr1,
                 nc1,
                 hevc_i_order.size());
