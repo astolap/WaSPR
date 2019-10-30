@@ -36,9 +36,6 @@ namespace fs = std::experimental::filesystem;
 
 #define SYSTEM_VERBOSE_QUIET true
 
-/*the aux_exists(), aux_ensure_directory() functions adapted from the ones
-originally written by Pedro Garcia Freitas for JPEG Pleno activities */
-
 bool aux_exists(const char* filename) {
     fs::path file_path(filename);
     return fs::exists(file_path);

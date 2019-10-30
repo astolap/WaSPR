@@ -32,6 +32,7 @@
 #include <fstream>
 #include <iomanip>
 
+#include "fileaux.hh"
 #include "json.hh"
 #include "decoder.hh"
 #include "view.hh"
@@ -68,6 +69,8 @@ decoder::~decoder() {
 }
 
 void decoder::decode() {
+
+    aux_ensure_directory(setup.output_directory);
 
     decode_header();
     decode_views();
@@ -128,6 +131,8 @@ void decoder::write_statsfile() {
         views.push_back(view_configuration);
 
     }
+
+    aux_ensure_directory(setup.stats_file);
 
     conf_out["views"] = views;
 

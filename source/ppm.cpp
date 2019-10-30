@@ -25,6 +25,7 @@
 */
 
 #include "ppm.hh"
+#include "fileaux.hh"
 
 #include <cstdio>
 #include <cstring>
@@ -130,6 +131,8 @@ bool aux_write16PGMPPM(
     const int32_t height,
     const int32_t ncomp, 
     const uint16_t *img) {
+
+  aux_ensure_directory(filename);
 
   if (IO_V)
     printf("Writing %s\n", filename);

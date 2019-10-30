@@ -69,6 +69,8 @@ encoder::~encoder() {
 
 void encoder::encode() {
 
+    aux_ensure_directory(setup.output_directory);
+
     generate_normalized_disparity();
     generate_texture();
     write_bitstream();
@@ -129,6 +131,8 @@ void encoder::write_statsfile() {
         views.push_back(view_configuration);
 
     }
+
+    aux_ensure_directory(setup.stats_file);
 
     conf_out["views"] = views;
 
@@ -208,6 +212,8 @@ void encoder::write_config(string config_json_file_out) {
         views.push_back(view_configuration);
 
     }
+
+    aux_ensure_directory(config_json_file_out);
 
     conf_out["views"] = views;
 
@@ -1199,7 +1205,7 @@ void encoder::generate_texture() {
 
             /* encode HM, YUV444 -> .hevc (any YUV format) */
 
-            int32_t QPfinal = SAI0->preset_QP;
+           
 
             long(*hevc_encoder)(
                 const char *,
@@ -1267,6 +1273,8 @@ void encoder::generate_texture() {
                 hevc_encoder = &encodeHM;
             }
 
+            int32_t QPfinal = 0;
+
             if (SAI0->preset_QP < 0) {
 
                 std::vector<double> bpps;
@@ -1327,6 +1335,9 @@ void encoder::generate_texture() {
                     QPfinal = round(double(*(QPs.end() - 2) + diffx*(dy / dx)));
 
                 }
+            }
+            else {
+                QPfinal = SAI0->preset_QP;
             }
 
             long bytes_hevc = hevc_encoder(
