@@ -21,10 +21,10 @@ The codec relies on external utilities for various coding stages. You will need 
 
 ## Running the software
 
-Download the light field data sets from [JPEG Pleno database](https://jpeg.org/plenodb/lf/pleno_lf/), and use one of the [configuration files](https://github.com/astolap/WaSPR/blob/master/configuration_files) provided. 
+Download the light field data sets from [JPEG Pleno database](https://jpeg.org/plenodb/lf/pleno_lf/), and use one of the [configuration files](https://github.com/astolap/WaSPR/blob/master/configuration_files) provided. The path to Kakadu requires only the directory where the binaries of the Kakadu utilities are. For HM encoder/decoder and gzip please provide full paths to the binaries (i.e., paths should end with .exe on Windows).
 
 The syntax for the encoder is,
-> waspr-encoder --input [INPUT DIRECTORY .PPM/.PGM --output [OUTPUT DIRECTORY .LF] --config [JSON CONFIG FILE] --kakadu [KAKADU BINARY DIRECTORY] --TAppEncoder [PATH TO HM ENCODER] --TAppDecoder [PATH TO HM DECODER] --HEVCcfg [PATH TO HM .CFG] --gzip-path  [PATH TO GZIP UTILITY].
+> waspr-encoder --input [INPUT DIRECTORY .PPM/.PGM --output [OUTPUT DIRECTORY .LF] --config [JSON CONFIG FILE] --kakadu [KAKADU BINARY DIRECTORY] --TAppEncoder [PATH TO HM ENCODER BINARY] --TAppDecoder [PATH TO HM DECODER BINARY] --HEVCcfg [PATH TO HM .CFG] --gzip-path  [PATH TO GZIP UTILITY BINARY].
 
 The syntax for the decoder is,
 > waspr-decoder --input [INPUT .LF] --output [OUTPUT DIRECTORY .PPM/.PGM] --kakadu [KAKADU BINARY DIRECTORY] --TAppDecoder [PATH TO HM DECODER] --gzip-path  [PATH TO GZIP UTILITY].
