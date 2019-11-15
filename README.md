@@ -19,6 +19,8 @@ This software has been developed using Visual Studio on Windows 10. For Visual S
 
 The codec relies on external utilities for various coding stages. You will need [Kakadu (JPEG 2000)](https://kakadusoftware.com/downloads/), [HM (HEVC)](https://hevc.hhi.fraunhofer.de/), and [gzip](https://www.gzip.org/).
 
+For some of the functionality, you will also need [OpenBLAS 0.3.6](https://www.openblas.net/).
+
 ## Running the software
 
 Download the light field data sets from [JPEG Pleno database](https://jpeg.org/plenodb/lf/pleno_lf/), and use one of the [configuration files](https://github.com/astolap/WaSPR/blob/master/configuration_files) provided. The path to Kakadu requires only the directory where the binaries of the Kakadu utilities are. For HM encoder/decoder and gzip please provide full paths to the binaries (i.e., paths should end with .exe on Windows).
