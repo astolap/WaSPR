@@ -17,7 +17,7 @@ The program is developed and maintained by [Pekka Astola](http://www.cs.tut.fi/~
 
 This software has been developed using Visual Studio on Windows 10. For Visual Studio a solution file is provided. Makefile will be added soon.
 
-The codec relies on external utilities for various coding stages. You will need [Kakadu (JPEG 2000)](https://kakadusoftware.com/downloads/), [HM (HEVC)](https://hevc.hhi.fraunhofer.de/), and [gzip](https://www.gzip.org/).
+The codec relies on external utilities for various coding stages. You will need [Kakadu (JPEG 2000)](https://kakadusoftware.com/downloads/), [HM (HEVC) 16.20](https://hevc.hhi.fraunhofer.de/), and [gzip](https://www.gzip.org/).
 
 For some of the functionality, you will also need [OpenBLAS 0.3.6](https://www.openblas.net/).
 
