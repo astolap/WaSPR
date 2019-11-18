@@ -155,13 +155,11 @@ void WaSPConfig::print_decoder_help() {
 void WaSPConfig::print_intro() {
     printf("\n\t--------------------------------------------------------\n");
     printf(
-        "\n\tWaSP - Warping and Sparse Prediction"
-        "\n\tAuthor: Pekka Astola (pekka.astola@tuni.fi), 2018-2019"
-        "\n\tWeb page: https://github.com/astolap/WaSP"
+        "\n\tWaSPR - Warping and Sparse Prediction on Regions"
+        "\n\tAuthor: Pekka Astola (pekka.astola@tuni.fi), 2019"
+        "\n\tWeb page: https://github.com/astolap/WaSPR/"
         "\n\tHome page of author: http://www.cs.tut.fi/~astolap/"
-        "\n\tPublication: P. Astola and I. Tabus,"
-        "\n\t\t\tWaSP: Hierarchical Warping, Merging, and Sparse Prediction for Light Field Image Compression,"
-        "\n\t\t\t2018 7th European Workshop on Visual Information Processing (EUVIP), Tampere, 2018, pp. 1-6."
+        "\n\tPublication submitted Nov, 2019."
         "\n\n\tBuild date: %s %s\n\n",__DATE__,__TIME__);
     printf("\n\t--------------------------------------------------------\n");
     return;
