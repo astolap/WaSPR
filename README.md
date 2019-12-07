@@ -13,6 +13,23 @@ This is the WaSPR (Warping and Sparse Prediction on Regions) light field compres
 
 The program is developed and maintained by [Pekka Astola](http://www.cs.tut.fi/~astolap/).
 
+If you use this program for research, remember to cite the following publication,
+
+```
+@ARTICLE{8924721,
+author={P. {Astola} and I. {Tabus}},
+journal={IEEE Access},
+title={Coding of Light Fields Using Disparity Based Sparse Prediction},
+year={2019},
+volume={},
+number={},
+pages={1-1},
+keywords={Cameras;Encoding;Codecs;Lenses;Transform coding;Image coding;Light field coding;image coding;plenoptic;multi-view},
+doi={10.1109/ACCESS.2019.2957934},
+ISSN={2169-3536},
+month={},}
+```
+
 ## Installing and compiling
 
 This software has been developed using Visual Studio on Windows 10. For Visual Studio a solution file is provided. Makefile will be added soon.
